@@ -10,9 +10,9 @@
   <div class="form-box">
   <form id="loginForm">
     <h2>Logg inn</h2>
-    <input type="text" name="brukernavn" placeholder="Brukernavn" required />
-    <input type="password" name="passord" placeholder="Passord" required />
-    <button type="submit">Logg inn</button>
+  <input id="brukernavn" name="brukernavn" placeholder="Brukernavn" required autocomplete="username">
+  <input id="passord" type="password" name="passord" placeholder="Passord" required autocomplete="current-password">
+  <button type="submit">Logg inn</button>
     <p>Har du ikke konto kontakt admin</p>
     <div class="status" id="status"></div>
   </form>

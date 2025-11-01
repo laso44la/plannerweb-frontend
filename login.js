@@ -1,5 +1,8 @@
-document.getElementById("loginForm").addEventListener("submit", async function (e) {
-  e.preventDefault();
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("loginForm");
+  
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
   const brukernavn = document.getElementById("brukernavn").value;
   const passord = document.getElementById("passord").value;
