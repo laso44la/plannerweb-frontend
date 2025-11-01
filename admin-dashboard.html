@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <h1>Velkommen til Dashboard</h1>
+  <div id="userInfo">Laster brukerinfo...</div>
+
+  <div id="adminSection" style="display:none;">
+    <h2>➕ Opprett ny bruker</h2>
+    <div class="ny-Bruker">
+      <form id="nyBrukerForm">
+        <label for="navn">Navn:</label>
+        <input type="text" id="navn" name="navn" placeholder="Ola Nordmann" required />
+        <label for="brukernavn">Brukernavn:</label>
+        <input type="text" id="brukernavn" name="brukernavn" placeholder="Brukernavn" required />
+        <label for="passord">Passord:</label>
+        <input type="password" id="passord" name="passord" placeholder="Passord" required />
+        <label for="rolle">Rolle:</label>
+        <select name="rolle" id="rolle" required>
+          <option value="">Velg rolle</option>
+          <option value="admin">Admin</option>
+          <option value="bruker">Bruker</option>
+        </select>
+        <div id="kundemottakDiv" style="display: none;">
+          <label for="kundemottak">Kundemottak (kun for brukere)</label>
+        <input type="text" name="kundemottak" id="kundemottak" placeholder="F.eks. Oslo eller Bergen"/>
+      </div>
+        <button type="submit">Opprett bruker</button>
+      </form>
+    </div>
+    <div id="nyBrukerStatus"></div>
+    <div class="brukertabell">
+      <h2>👥 Brukere</h2>
+      <table id="brukerTabell">
+        <thead>
+          <tr><th>ID</th><th>Brukernavn</th><th>Rolle</th><th>Handlinger</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h2>📊 Statistikk</h2>
+    <table id="statistikkTabell">
+      <thead>
+        <tr><th>Status</th><th>Antall jobber</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <button id="logoutBtn">Logg ut</button>
+
+  <script>
+    async function sjekkInnlogging() {
+      try {
+        const res = await fetch('http://localhost:3000/api/me', {
+          credentials: 'include'
+        });
+        if (!res.ok) return window.location.href = 'login.html';
+
+        const bruker = await res.json();
+        document.getElementById('userInfo').textContent =
+          `Innlogget som: ${bruker.brukernavn} (${bruker.rolle})`;
+
+        if (bruker.rolle === 'admin') {
+          document.getElementById('adminSection').style.display = 'block';
+          lastAdminData();
+        }
+      } catch {
+        window.location.href = 'login.html';
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (res.ok) window.location.href = 'login.html';
+        else alert('Feil ved utlogging');
+      } catch {
+        alert('Nettverksfeil ved utlogging');
+      }
+    });
+
+    sjekkInnlogging();
+
+    document.getElementById('rolle').addEventListener('change', function () {
+      const kundemottakInput = document.getElementById('kundemottak');
+      kundemottakInput.style.display = this.value === 'bruker' ? 'block' : 'none';
+      kundemottakInput.required = this.value === 'bruker';
+    });
+
+    document.getElementById('rolle').addEventListener('change', function () {
+      const kundemottakDiv = document.getElementById('kundemottakDiv');
+      kundemottakDiv.style.display = this.value === 'bruker' ? 'block' : 'none';
+    });
+
+
+    document.getElementById('nyBrukerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      const statusEl = document.getElementById('nyBrukerStatus');
+      statusEl.textContent = '';
+      statusEl.style.color = 'black';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/admin/brukere', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data)
+        });
+        const text = await res.text();
+        statusEl.textContent = text;
+        if (res.ok) {
+          e.target.reset();
+          lastAdminData();
+        } else {
+          statusEl.style.color = 'red';
+        }
+      } catch {
+        statusEl.textContent = 'Nettverksfeil';
+        statusEl.style.color = 'red';
+      }
+    });
+
+    async function lastAdminData() {
+      try {
+        // Hent brukere
+        const resBrukere = await fetch('http://localhost:3000/api/admin/brukere', {
+          credentials: 'include'
+        });
+        if (!resBrukere.ok) throw new Error('Feil ved henting av brukere');
+        const brukere = await resBrukere.json();
+
+        const brukerBody = document.querySelector('#brukerTabell tbody');
+        brukerBody.innerHTML = '';
+        brukere.forEach(bruker => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${bruker.id}</td>
+            <td>${bruker.brukernavn}</td>
+            <td>${bruker.rolle}</td>
+            <td>
+              <button data-id="${bruker.id}" class="slettBtn">Slett</button>
+              <button data-id="${bruker.id}" class="endrePassordBtn">Endre passord</button>
+            </td>
+          `;
+          brukerBody.appendChild(tr);
+        });
+
+        // Event listeners for slett og endre passord
+        document.querySelectorAll('.slettBtn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('Er du sikker på at du vil slette denne brukeren?')) return;
+            const id = btn.dataset.id;
+            try {
+              const res = await fetch(`http://localhost:3000/api/admin/brukere/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+              });
+              if (res.ok) {
+                alert('Bruker slettet');
+                lastAdminData();
+              } else {
+                alert(await res.text());
+              }
+            } catch {
+              alert('Nettverksfeil');
+            }
+          });
+        });
+
+        document.querySelectorAll('.endrePassordBtn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const nyttPassord = prompt('Skriv inn nytt passord (minst 6 tegn):');
+            if (!nyttPassord || nyttPassord.length < 6) return alert('Ugyldig passord');
+            const id = btn.dataset.id;
+            try {
+              const res = await fetch(`http://localhost:3000/api/admin/brukere/${id}/passord`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ nyttPassord })
+              });
+              if (res.ok) {
+                alert('Passord oppdatert');
+              } else {
+                alert(await res.text());
+              }
+            } catch {
+              alert('Nettverksfeil');
+            }
+          });
+        });
+
+        // Hent statistikk
+        const resStat = await fetch('http://localhost:3000/api/admin/statistikk', {
+          credentials: 'include'
+        });
+        if (!resStat.ok) throw new Error('Feil ved henting av statistikk');
+        const statistikk = await resStat.json();
+
+        const statBody = document.querySelector('#statistikkTabell tbody');
+        statBody.innerHTML = '';
+        statistikk.forEach(row => {
+          statBody.innerHTML += `<tr><td>${row.status}</td><td>${row.antall}</td></tr>`;
+        });
+      } catch (err) {
+        console.error('Feil ved lasting av admin-data:', err);
+      }
+    }
+  </script>
+</body>
+</html>

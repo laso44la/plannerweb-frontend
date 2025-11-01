@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <title>Lastebiler</title>
+</head>
+<body>
+  <h1>Lastebiler – drag and drop (<span id="jobbteller"></span>)</h1>
+  <div class="menu">
+    <button onclick="document.getElementById('nyForm').style.display='block'">➕ Legg til jobb</button>
+  </div>
+
+  <div id="nyForm">
+    <h3>Ny jobb</h3>
+    <input id="nyRegnr" placeholder="Reg.nr">
+    <input id="nyJobbnr" placeholder="Jobb.nr">
+    <input id="nyKunde" placeholder="Kunde">
+    <button onclick="leggTilJobb()">Lagre</button>
+  </div>
+
+  <div id="editForm">
+    <h3>Rediger jobb</h3>
+    <input id="editId" type="hidden">
+    <input id="editRegnr" placeholder="Reg.nr">
+    <input id="editJobbnr" placeholder="Jobb.nr">
+    <input id="editKunde" placeholder="Kunde">
+    <button onclick="lagreEndring()">Lagre endringer</button>
+  </div>
+
+  <div id="app">
+    <div class="status-col" data-status="ankommet">
+      <h3>📦 Ankommet (<span class="count"></span>)</h3>
+    </div>
+    <div class="status-col" data-status="arbeid">
+      <h3>🔧 I arbeid (<span class="count"></span>)</h3>
+    </div>
+    <div class="status-col" data-status="venter">
+      <h3>🕒 Venter deler (<span class="count"></span>)</h3>
+    </div>
+    <div class="status-col" data-status="ferdig">
+      <h3>✅ Komplett (<span class="count"></span>)</h3>
+    </div>
+    <div class="status-col" data-status="inaktiv">
+      <h3>⛔ Inaktiv (<span class="count"></span>)</h3>
+    </div>
+  </div>
+
+  <script>
+    let lastetInn = [];
+
+    function hentLastebiler() {
+      fetch('http://localhost:3000/api/lastebiler?sort=regnr')
+        .then(res => res.json())
+        .then(data => {
+          lastetInn = data;
+          render();
+        });
+    }
+
+      // Kjør første gang
+  hentLastebiler();
+
+  // 🔁 Hent på nytt hvert 5. sekund
+  setInterval(hentLastebiler, 5000);
+
+    function render() {
+      const kolonner = document.querySelectorAll('.status-col');
+      kolonner.forEach(col => col.innerHTML = '<h3>' + col.querySelector('h3').innerText.split('(')[0] + '(<span class="count"></span>)</h3>');
+
+      let total = 0;
+      kolonner.forEach(col => {
+        const status = col.dataset.status;
+        const iDenne = lastetInn.filter(l => l.status === status);
+        col.querySelector('.count').textContent = iDenne.length;
+        if (status !== 'inaktiv') total += iDenne.length;
+      });
+
+      document.getElementById('jobbteller').textContent = total;
+
+      lastetInn.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'lastebil ' + (l.status === 'ferdig' ? 'grønn' : l.status === 'venter' ? 'gul' : '');
+        div.innerText = `${l.regnr} (${l.kunde})`;
+        div.draggable = true;
+        div.dataset.id = l.id;
+
+        div.ondragstart = e => e.dataTransfer.setData("text/plain", l.id);
+
+        const col = document.querySelector(`.status-col[data-status="${l.status}"]`);
+
+        const slette = document.createElement('span');
+        slette.className = 'delete-btn';
+        slette.innerText = '×';
+        slette.onclick = () => slettJobb(l.id);
+        div.appendChild(slette);
+
+        const rediger = document.createElement('span');
+        rediger.className = 'edit-btn';
+        rediger.innerText = '✎';
+        rediger.onclick = () => visRedigerSkjema(l);
+        div.appendChild(rediger);
+
+        col.appendChild(div);
+      });
+    }
+
+    document.querySelectorAll('.status-col').forEach(col => {
+      col.ondragover = e => { e.preventDefault(); col.classList.add('drar-over'); };
+      col.ondragleave = () => col.classList.remove('drar-over');
+      col.ondrop = e => {
+        e.preventDefault();
+        col.classList.remove('drar-over');
+        const id = e.dataTransfer.getData("text/plain");
+        const nyStatus = col.dataset.status;
+        fetch(`http://localhost:3000/api/lastebiler/${id}/status`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nyStatus })
+        }).then(() => hentLastebiler());
+      };
+    });
+
+    function slettJobb(id) {
+      if (confirm('Slette denne jobben?')) {
+        fetch(`http://localhost:3000/api/lastebiler/${id}`, { method: 'DELETE' })
+          .then(() => hentLastebiler());
+      }
+    }
+
+    function leggTilJobb() {
+      const regnr = document.getElementById('nyRegnr').value;
+      const jobbnr = document.getElementById('nyJobbnr').value;
+      const kunde = document.getElementById('nyKunde').value;
+      fetch('http://localhost:3000/api/lastebiler', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regnr, jobbnr, kunde })
+      }).then(() => {
+        hentLastebiler();
+        document.getElementById('nyForm').style.display = 'none';
+      });
+    }
+
+    function visRedigerSkjema(bil) {
+      document.getElementById('editForm').style.display = 'block';
+      document.getElementById('editId').value = bil.id;
+      document.getElementById('editRegnr').value = bil.regnr;
+      document.getElementById('editJobbnr').value = bil.jobbnr;
+      document.getElementById('editKunde').value = bil.kunde;
+    }
+
+    function lagreEndring() {
+      const id = document.getElementById('editId').value;
+      const regnr = document.getElementById('editRegnr').value;
+      const jobbnr = document.getElementById('editJobbnr').value;
+      const kunde = document.getElementById('editKunde').value;
+
+      fetch(`http://localhost:3000/api/lastebiler/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regnr, jobbnr, kunde })
+      }).then(() => {
+        hentLastebiler();
+        document.getElementById('editForm').style.display = 'none';
+      });
+    }
+
+    hentLastebiler();
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Bruker</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div id="header"></div>
+
+  <script>
+    // Last inn felles header
+    fetch("header.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("header").innerHTML = html;
+      });
+  </script>
+  <h1>Velkommen <span id="brukerNavn"></span></h1>
+
+  <h3>Dette er ett åpen system, bruk med ansvar.</h3>
+  <p>Dato og Tid: <span id="datetime"></span></p>
+
+  <nav>
+    <ul>
+      <li><a href="jobbregistrering.html">Registrer jobb</a></li>
+      <li><a href="jobbstatus.html">Se status på jobber</a></li>
+      <li><button id="logoutBtn">Logg ut</button></li>
+    </ul>
+  </nav>
+
+  <script>
+    // Hent innlogget bruker
+    fetch("https://plannerweb-backend.onrender.com/api/me", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          window.location.href = "login.html";
+        } else {
+          document.getElementById("brukerNavn").innerText = data.navn;
+        }
+      });
+
+    // Logg ut
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      fetch("https://plannerweb-backend.onrender.com/api/logout", {
+        method: "POST",
+        credentials: "include"
+      }).then(() => {
+        window.location.href = "login.html";
+      });
+    });
+
+        const datetimeElement = document.getElementById("datetime");
+
+        function updateDateTime() {
+            const now = new Date();
+            const formattedDateTime = now.toLocaleString(); // Or use toLocaleDateString() and toLocaleTimeString()
+            datetimeElement.textContent = formattedDateTime;
+        }
+
+        // Initial call to display the date and time immediately
+        updateDateTime();
+
+        // Update the date and time every second
+        setInterval(updateDateTime, 1000);
+    
+  </script>
+</body>
+</html>

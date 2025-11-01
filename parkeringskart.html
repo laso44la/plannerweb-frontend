@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Parkeringskart – søk og dra biler</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background-color: #f3f3f3;
+      overflow: hidden;
+    }
+
+    .sidepanel {
+      width: 240px;
+      background: #fff;
+      border-right: 2px solid #ccc;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+    }
+
+    .sidepanel h2 {
+      font-size: 1.1em;
+      text-align: center;
+      margin: 5px 0 10px 0;
+    }
+
+    #searchInput {
+      padding: 6px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .bilListe {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bilListe .bil {
+      background-color: #ffe066;
+      border: 2px solid #666;
+      border-radius: 8px;
+      padding: 8px;
+      cursor: grab;
+      text-align: center;
+      user-select: none;
+    }
+
+    .bilListe .bil:hover {
+      background-color: #ffdd55;
+    }
+
+    .container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .kartWrapper {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    .kart {
+      max-width: none;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .kartWrapper .bil {
+      position: absolute;
+      background-color: #ffe066;
+      border: 2px solid #444;
+      border-radius: 6px;
+      padding: 3px 6px;
+      cursor: grab;
+      transform: translate(-50%, -50%);
+      user-select: none;
+      z-index: 10;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .kartWrapper .bil.highlight {
+      box-shadow: 0 0 15px 4px rgba(0, 128, 255, 0.7);
+      z-index: 20;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .zoom-btn {
+      font-size: 18px;
+      padding: 8px 12px;
+      cursor: pointer;
+      border: none;
+      background: none;
+    }
+
+    .zoom-btn:hover {
+      background-color: #eee;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="sidepanel">
+    <h2>🚗 Biler</h2>
+    <input type="text" id="searchInput" placeholder="Søk etter bil..." />
+    <div class="bilListe" id="bilListe">
+      <div class="bil" draggable="true" data-regnr="AB12345">AB12345</div>
+      <div class="bil" draggable="true" data-regnr="CD67890">CD67890</div>
+      <div class="bil" draggable="true" data-regnr="EF24680">EF24680</div>
+      <div class="bil" draggable="true" data-regnr="GH11223">GH11223</div>
+      <div class="bil" draggable="true" data-regnr="IJ44556">IJ44556</div>
+      <div class="bil" draggable="true" data-regnr="KL77889">KL77889</div>
+    </div>
+  </div>
+
+  <div class="container" id="kartContainer">
+    <div class="kartWrapper" id="kartWrapper">
+      <img src="images/parkering.png" alt="Parkeringsområde" class="kart" id="kart">
+    </div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoomIn">＋</button>
+      <button class="zoom-btn" id="zoomOut">－</button>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById("kartContainer");
+    const wrapper = document.getElementById("kartWrapper");
+    const searchInput = document.getElementById("searchInput");
+
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let isPanning = false;
+    let startX, startY;
+
+    // Zoom og panorering
+    container.addEventListener("wheel", e => {
+      e.preventDefault();
+      const zoomSpeed = 0.1;
+      const rect = container.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left - translateX;
+      const offsetY = e.clientY - rect.top - translateY;
+      const oldScale = scale;
+
+      if (e.deltaY < 0) scale *= 1 + zoomSpeed;
+      else scale *= 1 - zoomSpeed;
+      scale = Math.min(Math.max(scale, 0.5), 3);
+
+      translateX -= offsetX * (scale / oldScale - 1);
+      translateY -= offsetY * (scale / oldScale - 1);
+      updateTransform();
+    }, { passive: false });
+
+    document.getElementById("zoomIn").addEventListener("click", () => {
+      scale = Math.min(scale * 1.2, 3);
+      updateTransform();
+    });
+    document.getElementById("zoomOut").addEventListener("click", () => {
+      scale = Math.max(scale / 1.2, 0.5);
+      updateTransform();
+    });
+
+    container.addEventListener("mousedown", e => {
+      if (e.target.closest(".bil")) return;
+      isPanning = true;
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+      container.style.cursor = "grabbing";
+    });
+    container.addEventListener("mouseup", () => { isPanning = false; container.style.cursor = "default"; });
+    container.addEventListener("mouseleave", () => { isPanning = false; container.style.cursor = "default"; });
+    container.addEventListener("mousemove", e => {
+      if (!isPanning) return;
+      translateX = e.clientX - startX;
+      translateY = e.clientY - startY;
+      updateTransform();
+    });
+
+    function updateTransform() {
+      wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    // Dra fra liste
+    document.querySelectorAll(".bilListe .bil").forEach(bil => {
+      bil.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("text/plain", bil.dataset.regnr);
+      });
+    });
+
+    // Slipp på kart
+    container.addEventListener("dragover", e => e.preventDefault());
+    container.addEventListener("drop", e => {
+      e.preventDefault();
+      const regnr = e.dataTransfer.getData("text/plain");
+      const rect = container.getBoundingClientRect();
+      const x = (e.clientX - rect.left - translateX) / scale;
+      const y = (e.clientY - rect.top - translateY) / scale;
+
+      let bil = wrapper.querySelector(`.bil[data-regnr="${regnr}"]`);
+      if (!bil) {
+        bil = document.createElement("div");
+        bil.classList.add("bil");
+        bil.dataset.regnr = regnr;
+        bil.textContent = regnr;
+        wrapper.appendChild(bil);
+        gjørBilFlyttbar(bil);
+      }
+      bil.style.left = `${x}px`;
+      bil.style.top = `${y}px`;
+    });
+
+    // Gjør biler flyttbare
+    function gjørBilFlyttbar(bil) {
+      let flytter = false;
+      let startX, startY, offsetX, offsetY;
+      bil.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        flytter = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = bil.getBoundingClientRect();
+        const parentRect = wrapper.getBoundingClientRect();
+        offsetX = (rect.left + rect.width / 2 - parentRect.left) / scale;
+        offsetY = (rect.top + rect.height / 2 - parentRect.top) / scale;
+        bil.style.cursor = "grabbing";
+      });
+      window.addEventListener("mousemove", e => {
+        if (!flytter) return;
+        const dx = (e.clientX - startX) / scale;
+        const dy = (e.clientY - startY) / scale;
+        bil.style.left = `${offsetX + dx}px`;
+        bil.style.top = `${offsetY + dy}px`;
+      });
+      window.addEventListener("mouseup", () => {
+        if (flytter) {
+          flytter = false;
+          bil.style.cursor = "grab";
+        }
+      });
+    }
+
+    // Søk og zoom-til bil
+    searchInput.addEventListener("input", e => {
+      const term = e.target.value.toLowerCase();
+      const biler = document.querySelectorAll(".bilListe .bil");
+      let match = null;
+
+      biler.forEach(bil => {
+        const matchFound = bil.dataset.regnr.toLowerCase().includes(term);
+        bil.style.display = matchFound ? "block" : "none";
+        if (matchFound && term && !match) match = bil.dataset.regnr;
+      });
+
+      if (match) zoomTilBil(match);
+    });
+
+    function zoomTilBil(regnr) {
+      const bil = wrapper.querySelector(`.bil[data-regnr="${regnr}"]`);
+      if (!bil) return;
+      document.querySelectorAll(".kartWrapper .bil").forEach(b => b.classList.remove("highlight"));
+      bil.classList.add("highlight");
+      setTimeout(() => bil.classList.remove("highlight"), 2000);
+
+      const rect = container.getBoundingClientRect();
+      const bilRect = bil.getBoundingClientRect();
+      const targetX = rect.width / 2 - (bilRect.left + bilRect.width / 2 - rect.left);
+      const targetY = rect.height / 2 - (bilRect.top + bilRect.height / 2 - rect.top);
+
+      translateX += targetX;
+      translateY += targetY;
+      scale = 2; // zoom inn på bilen
+      updateTransform();
+    }
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+    
+    h2{
+        font-size: 16px;
+    }
+    button { 
+       
+        padding: 12px;
+        background: #7494ec;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #fff;
+        font-weight: 500;
+        margin-bottom: 20px;
+        transition: 0.5s;    
+    }
+
+    button:hover{
+        background: #6884d3;
+    }
+
+    table{
+        justify-content: center;
+    }
+
+    th{
+        padding: 1rem 2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        font-size: 0.7rem;
+        font-weight: 900;
+        background-color: rgb(0, 0, 0);
+        color: #ffffff;
+    }
+
+    tr{
+        text-align: center;
+    }
+
+    tr:nth-child(even){
+        background-color: beige;
+    }
+
+    #adminSection{
+           margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+
+    #nyBrukerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  margin-top: 1rem;
+}
+
+#nyBrukerForm label {
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+#nyBrukerForm input:focus,
+#nyBrukerForm select:focus {
+  outline: none;
+  border-color: #7494ec;
+  box-shadow: 0 0 5px rgba(116, 148, 236, 0.5);
+}
+#nyBrukerForm select {
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#kundemottakDiv {
+  display: none;
+}

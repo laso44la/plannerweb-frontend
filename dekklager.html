@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Dekklager</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="style.css">
+
+<style>
+    .jobb {
+      background: #737070;
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      position: relative;
+    }
+    .jobb strong {
+      font-size: 1.1em;
+    }
+    .jobb small {
+      display: block;
+      color: #555;
+      margin-top: 4px;
+    }
+    .edit-btn, .delete-btn {
+      cursor: pointer;
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      margin-left: 6px;
+    }
+    .edit-btn { right: 30px; }
+    .status-col {
+      min-height: 250px;
+      background: #686666;
+      border-radius: 8px;
+      padding: 8px;
+      margin: 5px;
+      flex: 1;
+    }
+    #app {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  </style>
+
+
+</head>
+<body>
+
+<div id="header"></div>
+
+  <script>
+    // Last inn felles header
+    fetch("header.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("header").innerHTML = html;
+      });
+  </script>
+  <h1>Totalt antall (<span id="totalCount">0</span> dekk)</h1>
+
+    <div class="menu">
+      <button onclick="document.getElementById('nyDekkForm').style.display='block'">➕ Legg til Dekk</button>
+      <button onclick="eksporterDekkCSV()">📤 Eksporter til CSV</button>
+    </div>
+
+    <div id="app">
+    <div class="status-col" data-status="Ingen">
+      <h3>📦 Ingen Lokasjon (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="Blå">
+      <h3>📦 Blå (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="Hvit">
+      <h3>📦 Hvit (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="Sutre">
+      <h3>📦 Sutre (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="Levert">
+      <h3>📦 Levert (<span class="count">0</span>)</h3>
+    </div>
+    </div>
+
+  <h2>Dekklager</h2>
+  <table id="dekklagerTable" border="1">
+    <thead>
+      <tr>
+        <th>Dimensjon</th>
+        <th>Antall</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<!-- Rediger dekk-skjema -->
+
+<div id="editForm" style="display: none;">
+  <h3>Rediger Dekk</h3>
+  <input id="editId" type="hidden">
+  <input id="editRegnr" placeholder="Reg.nr">
+  <input id="editJobbnr" placeholder="Jobb.nr">
+  <input id="editKunde" placeholder="Kunde">
+  <button onclick="lagreEndring()">Lagre endringer</button>
+</div>
+
+<!-- Ny jobb-skjema -->
+
+<form id="nyDekkForm" style="display: none;">
+  <h3>Ny Dekk Lager</h3>
+  <label>Reg.nr:</label>
+  <input type="text" name="regnr" id="nyRegnr" required>
+  <label>Jobb.nr:</label>
+  <input type="text" name="jobbnr" id="nyJobbnr" required>
+  <label>Kunde:</label>
+  <input type="text" name="kunde" id="nyKunde">
+  <br>
+  <button type="submit">Legg til jobb</button>
+</form>
+
+  <script>
+    async function hentDekklager() {
+      try {
+       const res = await fetch('https://plannerweb-backend.onrender.com/api/jobber', { credentials: 'include' });
+
+        if (!res.ok) throw new Error("Klarte ikke hente dekklager");
+        const data = await res.json();
+
+        const tbody = document.querySelector("#dekklagerTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach(rad => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${rad.dimensjon}</td>
+            <td>${rad.antall}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Feil:", err);
+      }
+    }
+
+    hentDekklager();
+
+
+    function eksporterDekkCSV() {
+      if (!jobber || jobber.length === 0) {
+        alert("Ingen jobber å eksportere.");
+        return;
+      }
+
+      // Velg hvilke felter som skal eksporteres
+      const headers = [
+        "ID",
+        "Jobbnr",
+        "Regnr",
+        "Kunde",
+        "Status",
+        "Opprettet_dato",
+        "Fullført_dato"
+      ];
+
+      // Lag CSV-innhold
+      const rows = jobber.map(j => [
+        j.id,
+        j.jobbnr,
+        j.regnr,
+        j.kunde || "",
+        j.status,
+        j.opprettet_dato || "",
+        j.fullfort_dato || ""
+      ]);
+
+      const csvContent =
+        [headers, ...rows]
+          .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+          .join("\n");
+
+      // Last ned som fil
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "jobber.csv";
+      link.click();
+    }
+
+  </script>
+</body>
+</html>

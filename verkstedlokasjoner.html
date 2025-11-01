@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Verkstedlokasjoner</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <div id="header"></div>
+
+  <script>
+    // Last inn felles header
+    fetch("header.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("header").innerHTML = html;
+      });
+  </script>
+  
+  <h2>Verkstedlokasjoner</h2>
+  <table id="verkstedTable" border="1">
+    <thead>
+      <tr>
+        <th>Plass</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function hentVerksted() {
+      try {
+        const res = await fetch("https://plannerweb-backend.onrender.com/api/verksted", {
+          credentials: "include"
+        });
+        if (!res.ok) throw new Error("Klarte ikke hente verksted");
+        const data = await res.json();
+
+        const tbody = document.querySelector("#verkstedTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach(rad => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${rad.plass}</td>
+            <td>${rad.status}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Feil:", err);
+      }
+    }
+
+    hentVerksted();
+  </script>
+</body>
+</html>

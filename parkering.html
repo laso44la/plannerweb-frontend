@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Parkering – PlannerWeb (full)</title>
+  <style>
+    :root{
+      --sidebar-w: 280px;
+      --accent: #3498db;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:#f3f4f6;color:#222}
+    #header{height:56px}
+    #wrap{display:flex;height:calc(100% - 56px);overflow:hidden}
+    /* Sidebar */
+    #sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid #dcdcdc;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
+    #sidebar h2{margin:0 0 6px 0;font-size:16px}
+    #search{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+    #bilListe{flex:1;overflow:auto;padding-right:4px}
+    .bil{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:6px;border:1px solid #e0e0e0;margin-bottom:6px;background:#fff;cursor:grab;gap:8px}
+    .bil .regnr{font-weight:600}
+    .plassert{min-width:18px;text-align:center;color:var(--accent);font-weight:700}
+    .vis-mer{width:100%;padding:8px;border-radius:6px;border:1px dashed #bbb;background:#fafafa;cursor:pointer}
+    /* Add bil */
+    #leggTilBil input, #leggTilBil button{width:100%;box-sizing:border-box;padding:8px;margin-bottom:6px;border-radius:6px;border:1px solid #ccc}
+    #leggTilBil button{background:var(--accent);color:#fff;border:none}
+    /* Map area */
+    #map{flex:1;position:relative;background:#e9eef7;overflow:hidden}
+    #kartWrapper{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+    #kartbilde{display:block;max-width:none;pointer-events:none;user-select:none;display:block}
+    .bil-ikon{position:absolute;display:flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box;padding:0 8px;height:36px;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;cursor:grab;user-select:none;transform-origin:center center}
+    .bil-ikon .kontroller{display:inline-flex;gap:6px;align-items:center}
+    .rot-handle{width:22px;height:22px;border-radius:50%;background:#fff;color:#333;display:inline-flex;align-items:center;justify-content:center;font-size:12px;cursor:crosshair;box-shadow:0 0 2px rgba(0,0,0,0.15)}
+    .fjern-knapp{background:transparent;border:none;cursor:pointer;font-size:14px}
+    .bil-ikon.highlight{box-shadow:0 0 18px 5px rgba(52,152,219,0.65);z-index:999}
+    /* zoom controls */
+    .zoom-controls{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.95);border-radius:8px;border:1px solid #ddd;display:flex;flex-direction:column;z-index:500;overflow:hidden}
+    .zoom-btn{padding:8px 10px;border:none;background:none;cursor:pointer;font-size:18px}
+    .zoom-btn:hover{background:#f1f1f1}
+    /* bottom status */
+    #statusLine{position:fixed;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;font-size:13px;z-index:2000}
+    /* small helpers */
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+
+  <div id="wrap">
+    <aside id="sidebar">
+      <h2>🚗 Biler</h2>
+      <input id="search" placeholder="Søk etter reg.nr eller trykk Enter for zoom" />
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="visKunParkerte"/> Vis kun parkerte biler
+      </label>
+      <div id="bilListe" aria-live="polite"></div>
+
+      <div id="leggTilBil">
+        <h3 style="margin:6px 0 8px 0">➕ Legg til bil</h3>
+        <input id="nyRegnr" placeholder="Reg.nr (f.eks. AB12345)" />
+        <input id="nyMerke" placeholder="Merke (valgfritt)" />
+        <input id="nyModell" placeholder="Modell (valgfritt)" />
+        <input id="nyÅrstall" type="number" placeholder="Årstall (valgfritt)" />
+        <button id="leggTilBilBtn">Legg til bil</button>
+        <div id="bilStatus" style="min-height:18px;margin-top:6px"></div>
+      </div>
+    </aside>
+
+    <main id="map" role="application" aria-label="Parkeringskart">
+      <div id="kartWrapper">
+        <img id="kartbilde" src="images/parkering.png" alt="Parkeringskart" />
+      </div>
+
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomIn">＋</button>
+        <button class="zoom-btn" id="zoomOut">－</button>
+        <button class="zoom-btn" id="resetView">🔄</button>
+      </div>
+    </main>
+  </div>
+
+  <div id="statusLine">Klar</div>
+
+<script>
+
+const API_BASE = "https://plannerweb-backend.onrender.com";
+
+/* ---------- Helpers ---------- */
+function visStatus(msg, ms = 2200) {
+  const el = document.getElementById('statusLine');
+  el.textContent = msg;
+  if (ms > 0) setTimeout(()=> el.textContent = 'Klar', ms);
+}
+function sanitizeRegnr(s){ if(!s) return ''; return s.toUpperCase().replace(/\s+/g,''); }
+function validRegnr(s){ if(!s) return false; const r = sanitizeRegnr(s); return /^[A-Z0-9]{5,8}$/.test(r); }
+
+/* ---------- Auth check + load header ---------- */
+async function sjekkInnlogging(){
+  try{
+    const res = await fetch(`${API_BASE}/api/jobber`, { credentials: 'include' });
+
+    if(!r.ok) { window.location.href='login.html'; return null; }
+    return await r.json();
+  }catch(e){ window.location.href='login.html'; }
+}
+(async ()=>{
+  const me = await sjekkInnlogging();
+  // load header (if present)
+  try{
+    const txt = await fetch('header.html').then(r=>r.text());
+    document.getElementById('header').innerHTML = txt;
+  }catch(e){ console.warn('Kunne ikke laste header.html', e); }
+  initParkering();
+})();
+
+/* ---------- Main parkering logic ---------- */
+function initParkering(){
+  const kartWrapper = document.getElementById('kartWrapper');
+  const kartbilde = document.getElementById('kartbilde');
+  const map = document.getElementById('map');
+  const bilListe = document.getElementById('bilListe');
+  const search = document.getElementById('search');
+  const visKunParkerte = document.getElementById('visKunParkerte');
+  const leggTilBtn = document.getElementById('leggTilBilBtn');
+  const statusDiv = document.getElementById('bilStatus');
+
+  // state
+  let biler = [];        // alle biler fra /api/biler
+  let valgtBil = null;   // midlertidig ved drag fra liste
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let isPanning = false, panStartX=0, panStartY=0;
+  let antallVis = 15;
+
+  /* ---------- hent biler + posisjoner ---------- */
+  async function hentBiler(){
+    try{
+      const resB = await fetch('${API_BASE}/api/biler', { credentials:'include' });
+      const dataB = await resB.json();
+      biler = Array.isArray(dataB) ? dataB.map(b=>{
+        if(b.regnr) b.regnr = sanitizeRegnr(b.regnr);
+        else b.regnr = '';
+        // ensure fields exist
+        b.x = b.x ?? null;
+        b.y = b.y ?? null;
+        b.vinkel = b.vinkel ?? 0;
+        return b;
+      }) : [];
+
+      const resP = await fetch('${API_BASE}/api/parkering', { credentials:'include' });
+      const dataP = await resP.json();
+      const posisjoner = Array.isArray(dataP) ? dataP : [];
+
+      // merge posisjon inn i biler (match sanitized regnr)
+      biler.forEach(b=>{
+        const match = posisjoner.find(p => sanitizeRegnr(p.regnr) === b.regnr);
+        if(match && match.x != null && match.y != null){
+          b.x = Number(match.x);
+          b.y = Number(match.y);
+          b.vinkel = Number(match.vinkel || 0);
+        } else {
+          b.x = null; b.y = null; b.vinkel = 0;
+        }
+      });
+
+      renderAlleIkoner(); // fjern + lag ikonene
+      visBilListe();
+      visStatus(`Lastet ${biler.length} biler`);
+    }catch(err){
+      console.error('Feil ved henting av biler/posisjoner:', err);
+      visStatus('Feil ved henting av biler');
+    }
+  }
+
+  /* ---------- vis bil-liste (med paging, søk, vis kun parkert) ---------- */
+  function visBilListe(){
+    bilListe.innerHTML = '';
+    const q = (search.value || '').trim().toLowerCase();
+    const kun = visKunParkerte.checked;
+
+    // filtrer basert på søk og parkering
+    const filtrert = biler.filter(b=>{
+      const matchS = b.regnr.toLowerCase().includes(q);
+      const matchP = !kun || (b.x != null && b.y != null);
+      return matchS && matchP;
+    });
+
+    // vis kun antallVis først
+    filtrert.slice(0, antallVis).forEach(b=>{
+      const div = document.createElement('div');
+      div.className = 'bil';
+      div.draggable = true;
+
+      const txt = document.createElement('span');
+      txt.className = 'regnr';
+      txt.textContent = b.regnr;
+      txt.style.flex = '1';
+      div.appendChild(txt);
+
+      const status = document.createElement('span');
+      status.className = 'plassert';
+      status.textContent = (b.x != null && b.y != null) ? 'P' : '';
+      div.appendChild(status);
+
+      // dragstart -> merk valgtBil
+      div.addEventListener('dragstart', (e)=>{
+        valgtBil = b;
+        try{ e.dataTransfer.setData('text/plain', b.regnr); }catch(e){}
+      });
+
+      // klikk -> zoom til (hvis plassert)
+      div.addEventListener('click', ()=>{
+        const ikon = document.querySelector(`.bil-ikon[data-regnr="${b.regnr}"]`);
+        if(ikon) zoomTilBil(ikon);
+      });
+
+      bilListe.appendChild(div);
+    });
+
+    if(filtrert.length > antallVis){
+      const btn = document.createElement('button');
+      btn.className = 'vis-mer';
+      btn.textContent = `Vis flere (${filtrert.length - antallVis} flere)`;
+      btn.addEventListener('click', ()=>{ antallVis += 15; visBilListe(); });
+      bilListe.appendChild(btn);
+    }
+  }
+
+  /* ---------- render / clear icons ---------- */
+  function renderAlleIkoner(){
+    // fjern gamle ikoner
+    Array.from(kartWrapper.querySelectorAll('.bil-ikon')).forEach(n=>n.remove());
+    // lag ikon for hver bil med posisjon
+    biler.forEach(b=>{
+      if(b.x != null && b.y != null) lagBilIkon(b);
+    });
+  }
+
+  /* ---------- lag et ikon for en bil ---------- */
+  function lagBilIkon(bil){
+    if(bil.x == null || bil.y == null) return;
+    // unngå duplikat
+    if(kartWrapper.querySelector(`.bil-ikon[data-regnr="${bil.regnr}"]`)) return;
+
+    const ICON_W = 110;
+    const ICON_H = 36;
+
+    const el = document.createElement('div');
+    el.className = 'bil-ikon';
+    el.dataset.regnr = bil.regnr;
+    el.dataset.x = String(bil.x);
+    el.dataset.y = String(bil.y);
+    el.dataset.vinkel = String(bil.vinkel || 0);
+    el.style.width = ICON_W + 'px';
+    el.style.height = ICON_H + 'px';
+    el.textContent = bil.regnr;
+
+    // posisjonere slik at bredde/høyde midtstemmer
+    el.style.left = (bil.x - ICON_W/2) + 'px';
+    el.style.top  = (bil.y - ICON_H/2) + 'px';
+    el.style.transform = `rotate(${bil.vinkel || 0}deg)`;
+
+    // kontroller (rot, fjern)
+    const kont = document.createElement('div');
+    kont.className = 'kontroller';
+    kont.style.marginLeft = '6px';
+    kont.style.display = 'inline-flex';
+    kont.style.gap = '6px';
+    kont.style.pointerEvents = 'auto';
+
+    const rot = document.createElement('div');
+    rot.className = 'rot-handle';
+    rot.title = 'Dra for å rotere';
+    rot.textContent = '↻';
+    kont.appendChild(rot);
+
+    const fjern = document.createElement('button');
+    fjern.className = 'fjern-knapp';
+    fjern.title = 'Fjern fra kart';
+    fjern.textContent = '🗑';
+    kont.appendChild(fjern);
+
+    // plasser kontroller inni ikonet (til høyre)
+    // vi vil ikke fjerne bil.regnr-teksten, så bruk flex-display
+    el.style.display = 'flex';
+    el.style.justifyContent = 'space-between';
+    el.style.alignItems = 'center';
+    el.style.padding = '0 8px';
+    el.innerHTML = ''; // fjern textContent satt tidligere
+    const txtSpan = document.createElement('span'); txtSpan.textContent = bil.regnr; txtSpan.style.pointerEvents='none';
+    el.appendChild(txtSpan);
+    el.appendChild(kont);
+
+    // ---- rotasjon (drag på rot-handle) ----
+    let rotating = false;
+    let center = null;
+    rot.addEventListener('mousedown', e=>{
+      e.stopPropagation();
+      rotating = true;
+      const r = el.getBoundingClientRect();
+      center = { x: r.left + r.width/2, y: r.top + r.height/2 };
+      document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', e=>{
+      if(!rotating) return;
+      const dx = e.clientX - center.x;
+      const dy = e.clientY - center.y;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      bil.vinkel = angle;
+      el.dataset.vinkel = String(angle);
+      el.style.transform = `rotate(${angle}deg)`;
+    });
+    window.addEventListener('mouseup', async ()=>{
+      if(rotating){
+        rotating = false;
+        document.body.style.userSelect = '';
+        await lagrePosisjon(bil);
+      }
+    });
+
+    // ---- drag ikon ----
+    let dragging = false, sx=0, sy=0, baseX=0, baseY=0;
+    el.addEventListener('mousedown', e=>{
+      if(e.button !== 0) return; // venstre kun
+      if(e.target.closest('.rot-handle') || e.target.closest('.fjern-knapp')) return;
+      e.stopPropagation();
+      dragging = true;
+      sx = e.clientX; sy = e.clientY;
+      baseX = bil.x; baseY = bil.y;
+      el.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const dx = (e.clientX - sx) / scale;
+      const dy = (e.clientY - sy) / scale;
+      const nx = baseX + dx;
+      const ny = baseY + dy;
+      el.style.left = (nx - ICON_W/2) + 'px';
+      el.style.top  = (ny - ICON_H/2) + 'px';
+    });
+    window.addEventListener('mouseup', async e=>{
+      if(!dragging) return;
+      dragging = false;
+      el.style.cursor = 'grab';
+      document.body.style.userSelect = '';
+      const rect = el.getBoundingClientRect();
+      const parentRect = kartWrapper.getBoundingClientRect();
+      // regn posisjon relativt til kartWrapper og ta hensyn til scale
+      const finalX = (rect.left - parentRect.left + ICON_W/2) / scale;
+      const finalY = (rect.top  - parentRect.top  + ICON_H/2) / scale;
+      bil.x = finalX; bil.y = finalY;
+      el.dataset.x = String(finalX); el.dataset.y = String(finalY);
+      await lagrePosisjon(bil);
+      visStatus(`Lagret posisjon ${bil.regnr}`);
+      oppdaterListe();
+    });
+
+    // ---- fjern knapp (nullstill i db) ----
+    fjern.addEventListener('click', async (ev)=>{
+      ev.stopPropagation();
+      try{
+        const res = await fetch('${API_BASE}/api/parkering', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({ regnr: bil.regnr, x: null, y: null, vinkel: null })
+        });
+        const txt = await res.text();
+        console.log('Backend svar:', txt);
+        bil.x = null; bil.y = null; bil.vinkel = 0;
+        el.remove();
+        oppdaterListe();
+        visStatus(`Fjernet ${bil.regnr} fra kart`);
+      }catch(err){
+        console.error('Feil ved fjern-posisjon', err);
+        visStatus('Feil ved fjerning');
+      }
+    });
+
+    // ---- Shift+R roter 15 grader ----
+    window.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase() === 'r' && e.shiftKey){
+        bil.vinkel = ((bil.vinkel || 0) + 15) % 360;
+        el.dataset.vinkel = String(bil.vinkel);
+        el.style.transform = `rotate(${bil.vinkel}deg)`;
+        lagrePosisjon(bil);
+      }
+    });
+
+    kartWrapper.appendChild(el);
+  }
+
+  /* ---------- oppdater liste "P" indikator ---------- */
+  function oppdaterListe(){
+    document.querySelectorAll('#bilListe .bil').forEach(div=>{
+      const reg = div.querySelector('.regnr').textContent.trim().toUpperCase();
+      const b = biler.find(x=>x.regnr === reg);
+      const span = div.querySelector('.plassert');
+      if(b && b.x != null && b.y != null) span.textContent = 'P'; else span.textContent = '';
+    });
+  }
+
+  /* ---------- lagre posisjon til backend ---------- */
+  async function lagrePosisjon(bil){
+    try{
+      await fetch('${API_BASE}/api/parkering', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify({ regnr: bil.regnr, x: bil.x, y: bil.y, vinkel: bil.vinkel ?? 0 })
+      });
+    }catch(err){
+      console.error('Feil ved lagring:', err);
+      visStatus('Feil ved lagring', 3000);
+    }
+  }
+
+  /* ---------- zoom & pan (kartWrapper transform) ---------- */
+  function updateTransform(){
+    kartWrapper.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+  }
+  map.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const rect = map.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const old = scale;
+    scale *= (e.deltaY < 0 ? 1.12 : 0.90);
+    scale = Math.min(Math.max(scale, 0.3), 3.5);
+    offsetX -= mx * (scale/old - 1);
+    offsetY -= my * (scale/old - 1);
+    updateTransform();
+  }, { passive:false });
+
+  map.addEventListener('mousedown', (e)=>{
+    if(e.target.closest('.bil-ikon') || e.target.closest('.rot-handle')) return;
+    isPanning = true;
+    panStartX = e.clientX; panStartY = e.clientY;
+    map.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mouseup', ()=>{ isPanning = false; map.style.cursor = ''; });
+  window.addEventListener('mousemove', (e)=>{
+    if(!isPanning) return;
+    offsetX += (e.clientX - panStartX);
+    offsetY += (e.clientY - panStartY);
+    panStartX = e.clientX; panStartY = e.clientY;
+    updateTransform();
+  });
+
+  document.getElementById('zoomIn').addEventListener('click', ()=>{ scale = Math.min(scale * 1.2, 3.5); updateTransform(); });
+  document.getElementById('zoomOut').addEventListener('click', ()=>{ scale = Math.max(scale / 1.2, 0.3); updateTransform(); });
+  document.getElementById('resetView').addEventListener('click', ()=>{ scale = 1; offsetX = 0; offsetY = 0; updateTransform(); });
+
+  /* ---------- drop fra liste til kart ---------- */
+  map.addEventListener('dragover', e=> e.preventDefault());
+  map.addEventListener('drop', async (e)=>{
+    e.preventDefault();
+    if(!valgtBil) return;
+    const rect = map.getBoundingClientRect();
+    // beregn pos innenfor kartWrapper-koords (tar hensyn til transform offset/scale)
+    const px = e.clientX - rect.left - offsetX;
+    const py = e.clientY - rect.top  - offsetY;
+    const x = px / scale;
+    const y = py / scale;
+    valgtBil.x = x; valgtBil.y = y;
+    // create icon (if not exists) and save
+    lagBilIkon(valgtBil);
+    await lagrePosisjon(valgtBil);
+    oppdaterListe();
+    visStatus(`Plassert ${valgtBil.regnr}`);
+    valgtBil = null;
+  });
+
+  /* ---------- search & enter to zoom ---------- */
+  search.addEventListener('input', ()=>{
+    visBilListe();
+    // show/hide icons to match filter quickly
+    const q = search.value.trim().toLowerCase();
+    document.querySelectorAll('.bil-ikon').forEach(k=>{
+      const r = (k.dataset.regnr || '').toLowerCase();
+      k.style.display = (q === '' || r.includes(q)) ? '' : 'none';
+    });
+  });
+  search.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      const q = search.value.trim().toLowerCase();
+      if(!q) return;
+      const first = Array.from(document.querySelectorAll('.bil-ikon'))
+        .find(d => (d.dataset.regnr||'').toLowerCase().includes(q));
+      if(first) {
+        zoomTilBil(first);
+        setTimeout(()=>{ search.value = ''; search.dispatchEvent(new Event('input')) }, 1200);
+      } else {
+        visStatus('Ingen parkert bil matchet søket', 2200);
+      }
+    }
+  });
+
+  /* ---------- click list zoom to parked vehicle ---------- */
+  bilListe.addEventListener('click', (e)=>{
+    const item = e.target.closest('.bil');
+    if(!item) return;
+    const reg = item.querySelector('.regnr').textContent.trim().toUpperCase();
+    const ikon = document.querySelector(`.bil-ikon[data-regnr="${reg}"]`);
+    if(ikon) zoomTilBil(ikon);
+    else visStatus('Bilen er ikke plassert på kartet', 1800);
+  });
+
+  /* ---------- smooth zoom to icon ---------- */
+  function zoomTilBil(ikon){
+    // ikon.dataset.x/y er i kart-koordinater (uten transform)
+    const x = Number(ikon.dataset.x);
+    const y = Number(ikon.dataset.y);
+    if(!isFinite(x) || !isFinite(y)) return;
+    const mapRect = map.getBoundingClientRect();
+    const targetScale = Math.min(Math.max(1.4, scale), 2.2);
+    offsetX = mapRect.width/2 - x * targetScale;
+    offsetY = mapRect.height/2 - y * targetScale;
+    scale = targetScale;
+    kartWrapper.style.transition = 'transform 0.55s ease';
+    updateTransform();
+    setTimeout(()=> kartWrapper.style.transition = '', 600);
+    ikon.classList.add('highlight');
+    setTimeout(()=> ikon.classList.remove('highlight'), 1600);
+  }
+
+  /* ---------- add new car (sanitise regnr) ---------- */
+  leggTilBtn.addEventListener('click', async ()=>{
+    statusDiv.textContent = '';
+    let regnr = document.getElementById('nyRegnr').value.trim();
+    const merke = document.getElementById('nyMerke').value.trim();
+    const modell = document.getElementById('nyModell').value.trim();
+    const år = document.getElementById('nyÅrstall').value.trim();
+
+    if(!regnr){ statusDiv.textContent = 'Reg.nr er påkrevd'; return; }
+    const regSan = sanitizeRegnr(regnr);
+    if(!validRegnr(regSan)){ statusDiv.textContent = 'Ugyldig reg.nr (bruk 5–8 store bokstaver/tall)'; return; }
+
+    try{
+      const res = await fetch('${API_BASE}/api/biler', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify({ regnr: regSan, merke: merke || null, modell: modell || null, årstall: år || null })
+      });
+      const txt = await res.text();
+      statusDiv.textContent = txt;
+      if(res.ok){
+        document.getElementById('nyRegnr').value=''; document.getElementById('nyMerke').value=''; document.getElementById('nyModell').value=''; document.getElementById('nyÅrstall').value='';
+        await hentBiler();
+      }
+    }catch(err){
+      console.error(err);
+      statusDiv.textContent = 'Feil ved lagring';
+    }
+  });
+
+  /* ---------- initial load ---------- */
+  hentBiler();
+
+  // expose for console debugging (helpful)
+  window.__park = { hentBiler, renderAlleIkoner, visBilListe, biler };
+} // end initParkering
+</script>
+</body>
+</html>

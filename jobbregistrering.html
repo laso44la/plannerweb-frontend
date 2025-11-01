@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Status på jobber</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div id="header"></div>
+
+  <script>
+    // Last inn felles header
+    fetch("header.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("header").innerHTML = html;
+      });
+  </script>
+
+
+  <h1>Status på jobber</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Regnr</th>
+        <th>Beskrivelse</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="jobberTable"></tbody>
+  </table>
+
+  <script>
+    async function hentJobber() {
+      const res = await fetch('https://plannerweb-backend.onrender.com/api/jobber', { credentials: 'include' });
+
+      const data = await res.json();
+
+      const tbody = document.getElementById("jobberTable");
+      tbody.innerHTML = "";
+      data.forEach(jobb => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${jobb.id}</td>
+          <td>${jobb.regnr}</td>
+          <td>${jobb.beskrivelse}</td>
+          <td>${jobb.status}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    hentJobber();
+  </script>
+</body>
+</html>

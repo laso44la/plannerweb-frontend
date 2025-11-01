@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Jobbstatus</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #2c2c2c;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    .jobb {
+      background: #737070;
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      position: relative;
+    }
+    .jobb strong { font-size: 1.1em; }
+    .jobb small {
+      display: block;
+      color: #ddd;
+      margin-top: 4px;
+    }
+    .edit-btn, .delete-btn {
+      cursor: pointer;
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      margin-left: 6px;
+    }
+    .edit-btn { right: 30px; }
+    .status-col {
+      min-height: 250px;
+      background: #3a3a3a;
+      border-radius: 8px;
+      padding: 8px;
+      margin: 5px;
+      flex: 1;
+      transition: background 0.2s;
+    }
+    .status-col.drar-over {
+      background: #555;
+    }
+    #app {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header"></div>
+<script>
+  fetch("header.html")
+    .then(res => res.text())
+    .then(html => { document.getElementById("header").innerHTML = html; });
+</script>
+
+<h1>Jobber (<span id="totalCount">0</span> aktive)</h1>
+
+<div class="menu">
+  <button onclick="document.getElementById('nyJobbForm').style.display='block'">➕ Legg til jobb</button>
+  <button onclick="eksporterJobberCSV()">📤 Eksporter til CSV</button>
+</div>
+
+<div id="app">
+  <div class="status-col" data-status="ankommet">
+    <h3>🛬 Ankommet (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="arbeid">
+    <h3>🔧 I arbeid (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="venter">
+    <h3>🕒 Venter deler (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="venter_wpa">
+    <h3>🪪 Venter WPA (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="venter_kunde">
+    <h3>📞 Venter kunde (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="komplett">
+    <h3>✅ Komplett (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="ferdig">
+    <h3>📦 Ferdig (<span class="count">0</span>)</h3>
+  </div>
+  <div class="status-col" data-status="inaktiv">
+    <h3>🚫 Inaktiv (<span class="count">0</span>)</h3>
+  </div>
+</div>
+
+<!-- Rediger jobb-skjema -->
+
+<div id="editForm" style="display: none;">
+  <h3>Rediger jobb</h3>
+  <input id="editId" type="hidden">
+  <input id="editRegnr" placeholder="Reg.nr">
+  <input id="editJobbnr" placeholder="Jobb.nr">
+  <input id="editKunde" placeholder="Kunde">
+  <button onclick="lagreEndring()">Lagre endringer</button>
+</div>
+
+<!-- Ny jobb-skjema -->
+
+<form id="nyJobbForm" style="display: none;">
+  <h3>Ny Jobb</h3>
+  <label>Reg.nr:</label>
+  <input type="text" name="regnr" id="nyRegnr" required>
+  <label>Jobb.nr:</label>
+  <input type="text" name="jobbnr" id="nyJobbnr" required>
+  <label>Kunde:</label>
+  <input type="text" name="kunde" id="nyKunde">
+  <br>
+  <button type="submit">Legg til jobb</button>
+</form>
+
+<script>
+  let jobber = [];
+
+  async function hentJobber() {
+    try {
+      const res = await fetch('http://localhost:3000/api/jobber', { credentials: 'include' });
+      jobber = await res.json();
+      render();
+    } catch (err) {
+      console.error("Feil ved henting av jobber:", err);
+    }
+  }
+
+  setInterval(hentJobber, 10000);
+  hentJobber();
+
+  function render() {
+    const kolonner = document.querySelectorAll('.status-col');
+    let totalAktive = 0;
+    const statusCounts = {};
+
+    kolonner.forEach(col => {
+      const status = col.dataset.status;
+      statusCounts[status] = 0;
+      const title = col.querySelector('h3').innerText.split('(')[0].trim();
+      col.innerHTML = `<h3>${title} (<span class="count">0</span>)</h3>`;
+    });
+
+    jobber.forEach(j => {
+      const div = document.createElement('div');
+      div.className = 'jobb';
+      div.innerHTML = `
+        <strong>${j.regnr}</strong> (${j.kunde || 'Ukjent kunde'})<br>
+        <small>Jobbnr: ${j.jobbnr || '—'}</small>
+        <small>Opprettet: ${formatDato(j.opprettet_dato)}</small>
+        <small>Fullført: ${j.fullfort_dato ? formatDato(j.fullfort_dato) : '—'}</small>
+      `;
+
+      const slette = document.createElement('span');
+      slette.className = 'delete-btn';
+      slette.textContent = '🗑️';
+      slette.onclick = () => slettJobb(j.id);
+      div.appendChild(slette);
+
+      const rediger = document.createElement('span');
+      rediger.className = 'edit-btn';
+      rediger.textContent = '✎';
+      rediger.onclick = () => visRedigerSkjema(j);
+      div.appendChild(rediger);
+
+      div.draggable = true;
+      div.dataset.id = j.id;
+      div.ondragstart = e => e.dataTransfer.setData("text/plain", j.id);
+
+      const col = document.querySelector(`.status-col[data-status="${j.status}"]`);
+      if (col) col.appendChild(div);
+
+      if (j.status !== 'inaktiv') totalAktive++;
+      if (statusCounts[j.status] !== undefined) statusCounts[j.status]++;
+    });
+
+    document.getElementById('totalCount').textContent = totalAktive;
+
+    for (let status in statusCounts) {
+      const el = document.querySelector(`.status-col[data-status="${status}"] .count`);
+      if (el) el.textContent = statusCounts[status];
+    }
+  }
+
+  function formatDato(dato) {
+    if (!dato) return '—';
+    return new Date(dato).toLocaleDateString('no-NO');
+  }
+
+  document.querySelectorAll('.status-col').forEach(col => {
+    col.ondragover = e => {
+      e.preventDefault();
+      col.classList.add('drar-over');
+    };
+    col.ondragleave = () => col.classList.remove('drar-over');
+    col.ondrop = async e => {
+      e.preventDefault();
+      col.classList.remove('drar-over');
+      const id = e.dataTransfer.getData("text/plain");
+      const nyStatus = col.dataset.status;
+
+      try {
+        await fetch(`http://localhost:3000/api/jobber/${id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ status: nyStatus })
+        });
+        const jobb = jobber.find(b => b.id == id);
+        if (jobb) {
+          jobb.status = nyStatus;
+          if (nyStatus === "ferdig") jobb.fullfort_dato = new Date().toISOString();
+          render();
+        }
+      } catch {
+        alert("Kunne ikke oppdatere status.");
+      }
+    };
+  });
+
+  async function slettJobb(id) {
+    if (!confirm("Er du sikker på at du vil slette denne jobben?")) return;
+    try {
+      await fetch(`http://localhost:3000/api/jobber/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      hentJobber();
+    } catch {
+      alert("Kunne ikke slette jobben.");
+    }
+  }
+
+  function visRedigerSkjema(j) {
+    document.getElementById('editForm').style.display = 'block';
+    document.getElementById('editId').value = j.id;
+    document.getElementById('editRegnr').value = j.regnr;
+    document.getElementById('editJobbnr').value = j.jobbnr;
+    document.getElementById('editKunde').value = j.kunde;
+  }
+
+  async function lagreEndring() {
+    const id = document.getElementById('editId').value;
+    const regnr = document.getElementById('editRegnr').value;
+    const jobbnr = document.getElementById('editJobbnr').value;
+    const kunde = document.getElementById('editKunde').value;
+
+    await fetch(`http://localhost:3000/api/jobber/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ regnr, jobbnr, kunde })
+    });
+    hentJobber();
+    document.getElementById('editForm').style.display = 'none';
+  }
+
+  document.getElementById('nyJobbForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const regnr = document.getElementById('nyRegnr').value;
+    const jobbnr = document.getElementById('nyJobbnr').value;
+    const kunde = document.getElementById('nyKunde').value;
+
+    await fetch('https://plannerweb-backend.onrender.com/api/jobber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ regnr, jobbnr, kunde })
+    });
+    hentJobber();
+    this.reset();
+    this.style.display = 'none';
+  });
+
+function eksporterJobberCSV() {
+  if (!jobber || jobber.length === 0) {
+    alert("Ingen jobber å eksportere.");
+    return;
+  }
+
+  // Velg hvilke felter som skal eksporteres
+  const headers = [
+    "ID",
+    "Jobbnr",
+    "Regnr",
+    "Kunde",
+    "Status",
+    "Opprettet_dato",
+    "Fullført_dato"
+  ];
+
+  // Lag CSV-innhold
+  const rows = jobber.map(j => [
+    j.id,
+    j.jobbnr,
+    j.regnr,
+    j.kunde || "",
+    j.status,
+    j.opprettet_dato || "",
+    j.fullfort_dato || ""
+  ]);
+
+  const csvContent =
+    [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+  // Last ned som fil
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "jobber.csv";
+  link.click();
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Lastebiler</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Lastebiler (<span id="totalCount">0</span> aktive)</h1>
+
+  <div class="menu">
+    <button onclick="document.getElementById('nyJobbForm').style.display='block'">➕ Legg til jobb</button>
+  </div>
+
+  <div id="app">
+    <div class="status-col" data-status="ankommet">
+      <h3>🛬 Ankommet (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="arbeid">
+      <h3>🔧 I arbeid (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="venter">
+      <h3>🕒 Venter deler (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="komplett">
+      <h3>✅ Komplett (<span class="count">0</span>)</h3>
+    </div>
+    <div class="status-col" data-status="inaktiv">
+      <h3>🚫 Inaktiv (<span class="count">0</span>)</h3>
+    </div>
+  </div>
+
+  <!-- Rediger jobb-skjema -->
+  <div id="editForm" style="display: none;">
+    <h3>Rediger jobb</h3>
+    <input id="editId" type="hidden">
+    <input id="editRegnr" placeholder="Reg.nr">
+    <input id="editJobbnr" placeholder="Jobb.nr">
+    <input id="editKunde" placeholder="Kunde">
+    <button onclick="lagreEndring()">Lagre endringer</button>
+  </div>
+
+  <!-- Ny jobb-skjema -->
+  <form id="nyJobbForm" style="display: none;">
+    <h3>Ny Jobb</h3>
+    <label>Reg.nr:</label>
+    <input type="text" name="regnr" id="nyRegnr" required>
+    <label>Jobb.nr:</label>
+    <input type="text" name="jobbnr" id="nyJobbnr" required>
+    <label>Kunde:</label>
+    <input type="text" name="kunde" id="nyKunde">
+    <br>
+    <button type="submit">Legg til jobb</button>
+  </form>
+
+  <script>
+    let lastetInn = [];
+
+    function hentLastebiler() {
+      fetch('https://plannerweb-backend.onrender.com/api/lastebiler?sort=regnr')
+        .then(res => res.json())
+        .then(data => {
+          lastetInn = data;
+          render();
+        });
+    }
+
+    setInterval(hentLastebiler, 10000);
+    hentLastebiler();
+
+    function render() {
+      const kolonner = document.querySelectorAll('.status-col');
+      let totalAktive = 0;
+
+      kolonner.forEach(col => {
+        const status = col.dataset.status;
+        const title = col.querySelector('h3').innerText.split('(')[0].trim();
+        col.innerHTML = `<h3>${title} (<span class="count">0</span>)</h3>`;
+      });
+
+      const statusCounts = {
+        ankommet: 0,
+        arbeid: 0,
+        venter: 0,
+        komplett: 0,
+        inaktiv: 0
+      };
+
+      lastetInn.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'lastebil ' + (
+          l.status === 'komplett' ? 'grønn' :
+          l.status === 'venter' ? 'gul' : ''
+        );
+        div.innerHTML = `<strong>${l.regnr}</strong> (${l.kunde})`;
+
+        const slette = document.createElement('span');
+        slette.className = 'delete-btn';
+        slette.textContent = '🗑️';
+        slette.onclick = () => slettJobb(l.id);
+        div.appendChild(slette);
+
+        const rediger = document.createElement('span');
+        rediger.className = 'edit-btn';
+        rediger.textContent = '✎';
+        rediger.onclick = () => visRedigerSkjema(l);
+        div.appendChild(rediger);
+
+        div.draggable = true;
+        div.dataset.id = l.id;
+        div.ondragstart = e => e.dataTransfer.setData("text/plain", l.id);
+
+        const col = document.querySelector(`.status-col[data-status="${l.status}"]`);
+        if (col) col.appendChild(div);
+
+        if (l.status !== 'inaktiv') totalAktive++;
+        if (statusCounts[l.status] !== undefined) statusCounts[l.status]++;
+      });
+
+      document.getElementById('totalCount').textContent = totalAktive;
+
+      for (let status in statusCounts) {
+        const el = document.querySelector(`.status-col[data-status="${status}"] .count`);
+        if (el) el.textContent = statusCounts[status];
+      }
+    }
+
+    document.querySelectorAll('.status-col').forEach(col => {
+      col.ondragover = e => {
+        e.preventDefault();
+        col.classList.add('drar-over');
+      };
+      col.ondragleave = () => col.classList.remove('drar-over');
+      col.ondrop = e => {
+        e.preventDefault();
+        col.classList.remove('drar-over');
+
+        const id = e.dataTransfer.getData("text/plain");
+        const nyStatus = col.dataset.status;
+        fetch(`https://plannerweb-backend.onrender.com/api/lastebiler/${id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nyStatus })
+        }).then(() => {
+          const bil = lastetInn.find(b => b.id == id);
+          if (bil) {
+            bil.status = nyStatus;
+            render();
+          }
+        });
+      };
+    });
+
+    function slettJobb(id) {
+      if (confirm("Er du sikker på at du vil slette denne jobben?")) {
+        fetch(`https://plannerweb-backend.onrender.com/api/lastebiler/${id}`, {
+          method: 'DELETE'
+        }).then(res => {
+          if (!res.ok) throw new Error();
+          hentLastebiler();
+        }).catch(() => alert("Kunne ikke slette jobben."));
+      }
+    }
+
+    function visRedigerSkjema(l) {
+      document.getElementById('editForm').style.display = 'block';
+      document.getElementById('editId').value = l.id;
+      document.getElementById('editRegnr').value = l.regnr;
+      document.getElementById('editJobbnr').value = l.jobbnr;
+      document.getElementById('editKunde').value = l.kunde;
+    }
+
+    function lagreEndring() {
+      const id = document.getElementById('editId').value;
+      const regnr = document.getElementById('editRegnr').value;
+      const jobbnr = document.getElementById('editJobbnr').value;
+      const kunde = document.getElementById('editKunde').value;
+
+      fetch(`https://plannerweb-backend.onrender.com/api/lastebiler/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regnr, jobbnr, kunde })
+      }).then(() => {
+        hentLastebiler();
+        document.getElementById('editForm').style.display = 'none';
+      });
+    }
+
+    document.getElementById('nyJobbForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const regnr = document.getElementById('nyRegnr').value;
+      const jobbnr = document.getElementById('nyJobbnr').value;
+      const kunde = document.getElementById('nyKunde').value;
+
+      fetch('https://plannerweb-backend.onrender.com/api/lastebiler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regnr, jobbnr, kunde })
+      }).then(res => {
+        if (!res.ok) throw new Error();
+        hentLastebiler();
+        this.reset();
+        this.style.display = 'none';
+      }).catch(() => alert("Kunne ikke legge til jobb."));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!-- header.html -->
+<nav class="topnav">
+  <a href="dashboard.html">🏠 Dashboard</a>
+  <a href="verkstedlokasjoner.html">🔧 Verksted</a>
+  <a href="jobbstatus.html">🗓️ JobbStatus</a>
+  <a href="parkering.html">🅿️ Parkering</a>
+  <a href="dekklager.html">🛞 Dekklager</a>
+  <a href="#" id="logoutLink">🚪 Logg ut</a>
+</nav>
+
+<style>
+  .topnav {
+    background-color: #2c3e50;
+    overflow: hidden;
+    padding: 0.5rem 1rem;
+  }
+
+  .topnav a {
+    float: left;
+    color: #ecf0f1;
+    text-align: center;
+    padding: 10px 16px;
+    text-decoration: none;
+    font-size: 16px;
+  }
+
+  .topnav a:hover {
+    background-color: #34495e;
+    border-radius: 4px;
+  }
+
+  .topnav a.active {
+    background-color: #1abc9c;
+    color: white;
+    border-radius: 4px;
+  }
+</style>
+
+<script>
+  // Marker aktiv side
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.topnav a').forEach(link => {
+      if (link.href === window.location.href) {
+        link.classList.add('active');
+      }
+    });
+
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          await fetch("https://plannerweb-backend.onrender.com/api/logout", {
+            method: "POST",
+            credentials: "include"
+          });
+          window.location.href = "login.html";
+        } catch {
+          alert('Feil ved utlogging');
+        }
+      });
+    }
+  });
+</script>
