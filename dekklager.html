@@ -6,192 +6,266 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="style.css">
 
-<style>
-    .jobb {
-      background: #737070;
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin: 6px 0;
-      border-radius: 6px;
-      position: relative;
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #2b2b2b;
+      color: white;
     }
-    .jobb strong {
-      font-size: 1.1em;
+
+    .menu {
+      margin-bottom: 1em;
     }
-    .jobb small {
-      display: block;
-      color: #555;
-      margin-top: 4px;
-    }
-    .edit-btn, .delete-btn {
-      cursor: pointer;
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      margin-left: 6px;
-    }
-    .edit-btn { right: 30px; }
-    .status-col {
-      min-height: 250px;
-      background: #686666;
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #3c3c3c;
       border-radius: 8px;
-      padding: 8px;
-      margin: 5px;
-      flex: 1;
     }
-    #app {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+
+    th, td {
+      border: 1px solid #666;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #444;
+    }
+
+    tr:hover {
+      background: #555;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    form {
+      background: #444;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 1em;
+    }
+
+    input, select {
+      padding: 6px;
+      margin: 4px;
+    }
+
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #125ca1;
+    }
+
+    /* 🔍 Filterfelt */
+    #filterContainer {
+      background: #3b3b3b;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    #filterContainer input, #filterContainer select {
+      margin-right: 10px;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #555;
+      background: #2b2b2b;
+      color: white;
     }
   </style>
-
-
 </head>
 <body>
 
 <div id="header"></div>
 
-  <script>
-    // Last inn felles header
-    fetch("header.html")
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("header").innerHTML = html;
-      });
-  </script>
-  <h1>Totalt antall (<span id="totalCount">0</span> dekk)</h1>
+<script>
+  fetch("header.html")
+    .then(res => res.text())
+    .then(html => { document.getElementById("header").innerHTML = html; });
+</script>
 
-    <div class="menu">
-      <button onclick="document.getElementById('nyDekkForm').style.display='block'">➕ Legg til Dekk</button>
-      <button onclick="eksporterDekkCSV()">📤 Eksporter til CSV</button>
-    </div>
+<h1>🛞 Dekklager</h1>
 
-    <div id="app">
-    <div class="status-col" data-status="Ingen">
-      <h3>📦 Ingen Lokasjon (<span class="count">0</span>)</h3>
-    </div>
-    <div class="status-col" data-status="Blå">
-      <h3>📦 Blå (<span class="count">0</span>)</h3>
-    </div>
-    <div class="status-col" data-status="Hvit">
-      <h3>📦 Hvit (<span class="count">0</span>)</h3>
-    </div>
-    <div class="status-col" data-status="Sutre">
-      <h3>📦 Sutre (<span class="count">0</span>)</h3>
-    </div>
-    <div class="status-col" data-status="Levert">
-      <h3>📦 Levert (<span class="count">0</span>)</h3>
-    </div>
-    </div>
-
-  <h2>Dekklager</h2>
-  <table id="dekklagerTable" border="1">
-    <thead>
-      <tr>
-        <th>Dimensjon</th>
-        <th>Antall</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-<!-- Rediger dekk-skjema -->
-
-<div id="editForm" style="display: none;">
-  <h3>Rediger Dekk</h3>
-  <input id="editId" type="hidden">
-  <input id="editRegnr" placeholder="Reg.nr">
-  <input id="editJobbnr" placeholder="Jobb.nr">
-  <input id="editKunde" placeholder="Kunde">
-  <button onclick="lagreEndring()">Lagre endringer</button>
+<div class="menu">
+  <button onclick="visNyttSkjema(true)">➕ Registrer nytt dekk</button>
+  <button onclick="eksporterDekkCSV()">📤 Eksporter til CSV</button>
 </div>
 
-<!-- Ny jobb-skjema -->
+<!-- 🔍 Filterseksjon -->
+<div id="filterContainer">
+  <label for="filterType">Søk etter:</label>
+  <select id="filterType">
+    <option value="regnr">Reg.nr</option>
+    <option value="lokasjon">Lokasjon</option>
+  </select>
+  <input type="text" id="filterInput" placeholder="Søk her..." oninput="filtrerDekklager()">
+</div>
 
-<form id="nyDekkForm" style="display: none;">
-  <h3>Ny Dekk Lager</h3>
-  <label>Reg.nr:</label>
-  <input type="text" name="regnr" id="nyRegnr" required>
-  <label>Jobb.nr:</label>
-  <input type="text" name="jobbnr" id="nyJobbnr" required>
-  <label>Kunde:</label>
-  <input type="text" name="kunde" id="nyKunde">
+<table id="dekklagerTable">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Reg.nr</th>
+      <th>Lokasjon</th>
+      <th>Type</th>
+      <th>Dimensjon</th>
+      <th>Antall</th>
+      <th>Innlevert</th>
+      <th>Utlevert</th>
+      <th>Kunde-ID</th>
+      <th>Jobb-ID</th>
+      <th>Handling</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<form id="nyDekkForm" class="hidden">
+  <h3>➕ Legg til nytt dekk</h3>
+  <label>Reg.nr:</label><input id="nyRegnr" required>
+  <label>Lokasjon:</label><input id="nyLokasjon">
+  <label>Type:</label><input id="nyType">
+  <label>Dimensjon:</label><input id="nyDimensjon" required>
+  <label>Antall:</label><input id="nyAntall" type="number" required>
+  <label>Kunde-ID:</label><input id="nyKundeId" type="number">
+  <label>Jobb-ID:</label><input id="nyJobbId" type="number">
   <br>
-  <button type="submit">Legg til jobb</button>
+  <button type="submit">💾 Lagre</button>
+  <button type="button" onclick="visNyttSkjema(false)">Avbryt</button>
 </form>
 
-  <script>
+<script>
+  const API_BASE = "https://plannerweb-backend.onrender.com";
+  let dekkliste = [];
 
-    const API_BASE = "https://plannerweb-backend.onrender.com";
+  async function hentDekklager() {
+    try {
+      const res = await fetch(`${API_BASE}/api/dekklager`, { credentials: 'include' });
+      if (!res.ok) throw new Error("Feil ved henting av dekklager");
+      dekkliste = await res.json();
+      visDekklager(dekkliste);
+    } catch (err) {
+      console.error("Feil:", err);
+    }
+  }
 
-    async function hentDekklager() {
-      try {
-       const res = await fetch('${API_BASE}/api/dekklager', { credentials: 'include' });
+  function visDekklager(data) {
+    const tbody = document.querySelector("#dekklagerTable tbody");
+    tbody.innerHTML = "";
+    data.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.id}</td>
+        <td>${r.regnr || '-'}</td>
+        <td>${r.lokasjon || '-'}</td>
+        <td>${r.type || '-'}</td>
+        <td>${r.dimensjon || '-'}</td>
+        <td>${r.antall || 0}</td>
+        <td>${r.dato_innlevert ? new Date(r.dato_innlevert).toLocaleDateString() : '-'}</td>
+        <td>${r.dato_utlevert ? new Date(r.dato_utlevert).toLocaleDateString() : '-'}</td>
+        <td>${r.kunde_id || '-'}</td>
+        <td>${r.jobb_id || '-'}</td>
+        <td><button onclick="slettDekk(${r.id})">🗑️</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
-        if (!res.ok) throw new Error("Klarte ikke hente dekklager");
-        const data = await res.json();
+  async function slettDekk(id) {
+    if (!confirm("Vil du slette dette dekket fra lageret?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/dekklager/${id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Feil ved sletting");
+      hentDekklager();
+    } catch (err) {
+      console.error("Sletting feilet:", err);
+    }
+  }
 
-        const tbody = document.querySelector("#dekklagerTable tbody");
-        tbody.innerHTML = "";
+  function visNyttSkjema(vis) {
+    document.getElementById("nyDekkForm").classList.toggle("hidden", !vis);
+  }
 
-        data.forEach(rad => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${rad.dimensjon}</td>
-            <td>${rad.antall}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error("Feil:", err);
-      }
+  document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nyttDekk = {
+      regnr: document.getElementById("nyRegnr").value,
+      lokasjon: document.getElementById("nyLokasjon").value,
+      type: document.getElementById("nyType").value,
+      dimensjon: document.getElementById("nyDimensjon").value,
+      antall: parseInt(document.getElementById("nyAntall").value),
+      kunde_id: document.getElementById("nyKundeId").value || null,
+      jobb_id: document.getElementById("nyJobbId").value || null,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/dekklager`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(nyttDekk)
+      });
+      if (!res.ok) throw new Error("Kunne ikke legge til dekk");
+      visNyttSkjema(false);
+      e.target.reset();
+      hentDekklager();
+    } catch (err) {
+      console.error("Feil ved oppretting:", err);
+    }
+  });
+
+  // 🔍 Filterfunksjon
+  function filtrerDekklager() {
+    const felt = document.getElementById("filterType").value;
+    const søk = document.getElementById("filterInput").value.toLowerCase();
+
+    const filtrert = dekkliste.filter(d => {
+      const verdi = (d[felt] || "").toString().toLowerCase();
+      return verdi.includes(søk);
+    });
+
+    visDekklager(filtrert);
+  }
+
+  function eksporterDekkCSV() {
+    if (!dekkliste || dekkliste.length === 0) {
+      alert("Ingen dekk å eksportere.");
+      return;
     }
 
-    hentDekklager();
+    const headers = ["ID","Regnr","Lokasjon","Type","Dimensjon","Antall","Innlevert","Utlevert","Kunde-ID","Jobb-ID"];
+    const rows = dekkliste.map(d => [
+      d.id, d.regnr, d.lokasjon, d.type, d.dimensjon, d.antall,
+      d.dato_innlevert, d.dato_utlevert, d.kunde_id, d.jobb_id
+    ]);
 
+    const csvContent = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(","))
+      .join("\n");
 
-    function eksporterDekkCSV() {
-      if (!jobber || jobber.length === 0) {
-        alert("Ingen jobber å eksportere.");
-        return;
-      }
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "dekklager.csv";
+    link.click();
+  }
 
-      // Velg hvilke felter som skal eksporteres
-      const headers = [
-        "ID",
-        "Jobbnr",
-        "Regnr",
-        "Kunde",
-        "Status",
-        "Opprettet_dato",
-        "Fullført_dato"
-      ];
-
-      // Lag CSV-innhold
-      const rows = jobber.map(j => [
-        j.id,
-        j.jobbnr,
-        j.regnr,
-        j.kunde || "",
-        j.status,
-        j.opprettet_dato || "",
-        j.fullfort_dato || ""
-      ]);
-
-      const csvContent =
-        [headers, ...rows]
-          .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
-          .join("\n");
-
-      // Last ned som fil
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "jobber.csv";
-      link.click();
-    }
-
-  </script>
+  hentDekklager();
+</script>
 </body>
 </html>
