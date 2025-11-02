@@ -131,18 +131,37 @@
   <tbody></tbody>
 </table>
 
-<form id="nyDekkForm" class="hidden">
+<!-- Nytt dekk-skjema -->
+<form id="nyDekkForm" style="display: none;">
   <h3>➕ Legg til nytt dekk</h3>
-  <label>Reg.nr:</label><input id="nyRegnr" required>
-  <label>Lokasjon:</label><input id="nyLokasjon">
-  <label>Type:</label><input id="nyType">
-  <label>Dimensjon:</label><input id="nyDimensjon" required>
-  <label>Antall:</label><input id="nyAntall" type="number" required>
-  <label>Kunde-ID:</label><input id="nyKundeId" type="number">
-  <label>Jobb-ID:</label><input id="nyJobbId" type="number">
-  <br>
-  <button type="submit">💾 Lagre</button>
-  <button type="button" onclick="visNyttSkjema(false)">Avbryt</button>
+
+  <label for="nyRegnr">Reg.nr:</label>
+  <input type="text" id="nyRegnr" required placeholder="F.eks. AB12345">
+
+  <label for="nyDimensjon">Dimensjon:</label>
+  <input type="text" id="nyDimensjon" required placeholder="F.eks. 205/55 R16">
+
+  <label for="nyAntall">Antall:</label>
+  <input type="number" id="nyAntall" required min="1" value="4">
+
+  <label for="nyLokasjon">Lokasjon:</label>
+  <select id="nyLokasjon">
+    <option value="">Ingen</option>
+    <option value="Blå">Blå</option>
+    <option value="Hvit">Hvit</option>
+    <option value="Sutre">Sutre</option>
+  </select>
+
+  <label for="nyType">Type dekk:</label>
+  <select id="nyType">
+    <option value="">Ikke valgt</option>
+    <option value="Vinterdekk">Vinterdekk</option>
+    <option value="Sommerdekk">Sommerdekk</option>
+    <option value="Piggdekk">Piggdekk</option>
+  </select>
+
+  <br><br>
+  <button type="submit">💾 Legg til i lageret</button>
 </form>
 
 <script>
@@ -200,34 +219,36 @@
     document.getElementById("nyDekkForm").classList.toggle("hidden", !vis);
   }
 
-  document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
+// Håndter innsending av nytt dekk
+document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const nyttDekk = {
-      regnr: document.getElementById("nyRegnr").value,
-      lokasjon: document.getElementById("nyLokasjon").value,
-      type: document.getElementById("nyType").value,
-      dimensjon: document.getElementById("nyDimensjon").value,
-      antall: parseInt(document.getElementById("nyAntall").value),
-      kunde_id: document.getElementById("nyKundeId").value || null,
-      jobb_id: document.getElementById("nyJobbId").value || null,
-    };
+  const data = {
+    regnr: document.getElementById("nyRegnr").value.trim(),
+    dimensjon: document.getElementById("nyDimensjon").value.trim(),
+    antall: parseInt(document.getElementById("nyAntall").value),
+    lokasjon: document.getElementById("nyLokasjon").value || null,
+    type: document.getElementById("nyType").value || null,
+  };
 
-    try {
-      const res = await fetch(`${API_BASE}/api/dekklager`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(nyttDekk)
-      });
-      if (!res.ok) throw new Error("Kunne ikke legge til dekk");
-      visNyttSkjema(false);
-      e.target.reset();
-      hentDekklager();
-    } catch (err) {
-      console.error("Feil ved oppretting:", err);
-    }
-  });
+  try {
+    const res = await fetch(`${API_BASE}/api/dekklager`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Kunne ikke legge til dekk");
+    alert("✅ Dekk lagt til i lageret!");
+    document.getElementById("nyDekkForm").reset();
+    document.getElementById("nyDekkForm").style.display = "none";
+    hentDekklager();
+  } catch (err) {
+    console.error("Feil ved oppretting:", err);
+    alert("❌ Feil ved oppretting av dekk. Se konsoll for detaljer.");
+  }
+});
 
   // 🔍 Filterfunksjon
   function filtrerDekklager() {
