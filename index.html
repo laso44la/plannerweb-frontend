@@ -32,14 +32,13 @@
   <script>
     // Hent innlogget bruker
     fetch("https://plannerweb-backend.onrender.com/api/me", { credentials: "include" })
-      .then(res => res.json())
       .then(data => {
-        if (data.error) {
-          window.location.href = "login.html";
-        } else {
-          document.getElementById("brukerNavn").innerText = data.navn;
-        }
-      });
+  if (data.error) {
+    window.location.href = "login.html";
+  } else {
+    document.getElementById("brukerNavn").innerText = data.brukernavn;
+  }
+});
 
     // Logg ut 
     document.getElementById("logoutBtn").addEventListener("click", () => {
