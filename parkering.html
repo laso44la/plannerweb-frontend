@@ -149,7 +149,7 @@ function initParkering(){
   /* ---------- hent biler + posisjoner ---------- */
   async function hentBiler(){
     try{
-      const resB = await fetch('${API_BASE}/api/biler', { credentials:'include' });
+      const resB = await fetch(`${API_BASE}/api/biler`, { credentials:'include' });
       const dataB = await resB.json();
       biler = Array.isArray(dataB) ? dataB.map(b=>{
         if(b.regnr) b.regnr = sanitizeRegnr(b.regnr);
@@ -161,7 +161,7 @@ function initParkering(){
         return b;
       }) : [];
 
-      const resP = await fetch('${API_BASE}/api/parkering', { credentials:'include' });
+      const resP = await fetch(`${API_BASE}/api/parkering`, { credentials:'include' });
       const dataP = await resP.json();
       const posisjoner = Array.isArray(dataP) ? dataP : [];
 
@@ -374,7 +374,7 @@ function initParkering(){
     fjern.addEventListener('click', async (ev)=>{
       ev.stopPropagation();
       try{
-        const res = await fetch('${API_BASE}/api/parkering', {
+        const res = await fetch(`${API_BASE}/api/parkering`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           credentials:'include',
@@ -418,7 +418,7 @@ function initParkering(){
   /* ---------- lagre posisjon til backend ---------- */
   async function lagrePosisjon(bil){
     try{
-      await fetch('${API_BASE}/api/parkering', {
+      await fetch(`${API_BASE}/api/parkering`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         credentials:'include',
@@ -552,7 +552,7 @@ function initParkering(){
     if(!validRegnr(regSan)){ statusDiv.textContent = 'Ugyldig reg.nr (bruk 5–8 store bokstaver/tall)'; return; }
 
     try{
-      const res = await fetch('${API_BASE}/api/biler', {
+      const res = await fetch(`${API_BASE}/api/biler`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         credentials:'include',
