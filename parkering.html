@@ -95,24 +95,36 @@ function sanitizeRegnr(s){ if(!s) return ''; return s.toUpperCase().replace(/\s+
 function validRegnr(s){ if(!s) return false; const r = sanitizeRegnr(s); return /^[A-Z0-9]{5,8}$/.test(r); }
 
 /* ---------- Auth check + load header ---------- */
-async function sjekkInnlogging(){
-  try{
-    const res = await fetch(`${API_BASE}/api/jobber`, { credentials: 'include' });
-    if (res.status === 401) {
+async function sjekkInnlogging() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
+
+    if (!res.ok) {
+      // Hvis backend returnerer 401 eller annen feil → send til login
       window.location.href = "login.html";
-      return;
+      return null;
     }
-    if(!r.ok) { window.location.href='login.html'; return null; }
-    return await r.json();
-  }catch(e){ window.location.href='login.html'; }
+
+    return await res.json();
+  } catch (e) {
+    console.error("Feil under sjekk av innlogging:", e);
+    window.location.href = "login.html";
+    return null;
+  }
 }
-(async ()=>{
+
+(async () => {
   const me = await sjekkInnlogging();
-  // load header (if present)
-  try{
-    const txt = await fetch('header.html').then(r=>r.text());
+  if (!me) return; // stopper videre kjøring om ikke logget inn
+
+  // last header
+  try {
+    const txt = await fetch('header.html').then(r => r.text());
     document.getElementById('header').innerHTML = txt;
-  }catch(e){ console.warn('Kunne ikke laste header.html', e); }
+  } catch (e) {
+    console.warn('Kunne ikke laste header.html', e);
+  }
+
   initParkering();
 })();
 

@@ -122,9 +122,12 @@
 </form>
 
   <script>
+
+    const API_BASE = "https://plannerweb-backend.onrender.com";
+
     async function hentDekklager() {
       try {
-       const res = await fetch('https://plannerweb-backend.onrender.com/api/jobber', { credentials: 'include' });
+       const res = await fetch('${API_BASE}/api/dekklager', { credentials: 'include' });
 
         if (!res.ok) throw new Error("Klarte ikke hente dekklager");
         const data = await res.json();
