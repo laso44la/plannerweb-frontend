@@ -126,7 +126,12 @@
 
   async function hentJobber() {
     try {
-      const res = await fetch('http://localhost:3000/api/jobber', { credentials: 'include' });
+              const res = await fetch('https://plannerweb-backend.onrender.com/api/jobber', { credentials: 'include' });
+              if (res.status === 401) {
+          window.location.href = "login.html";
+          return;
+        }
+              
       jobber = await res.json();
       render();
     } catch (err) {
@@ -208,7 +213,7 @@
       const nyStatus = col.dataset.status;
 
       try {
-        await fetch(`http://localhost:3000/api/jobber/${id}/status`, {
+        await fetch(`https://plannerweb-backend.onrender.com/api/jobber/${id}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -229,7 +234,7 @@
   async function slettJobb(id) {
     if (!confirm("Er du sikker på at du vil slette denne jobben?")) return;
     try {
-      await fetch(`http://localhost:3000/api/jobber/${id}`, {
+      await fetch(`https://plannerweb-backend.onrender.com/api/jobber/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -253,7 +258,7 @@
     const jobbnr = document.getElementById('editJobbnr').value;
     const kunde = document.getElementById('editKunde').value;
 
-    await fetch(`http://localhost:3000/api/jobber/${id}`, {
+    await fetch(`https://plannerweb-backend.onrender.com/api/jobber/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
