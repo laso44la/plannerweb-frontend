@@ -98,7 +98,10 @@ function validRegnr(s){ if(!s) return false; const r = sanitizeRegnr(s); return 
 async function sjekkInnlogging(){
   try{
     const res = await fetch(`${API_BASE}/api/jobber`, { credentials: 'include' });
-
+    if (res.status === 401) {
+      window.location.href = "login.html";
+      return;
+    }
     if(!r.ok) { window.location.href='login.html'; return null; }
     return await r.json();
   }catch(e){ window.location.href='login.html'; }
