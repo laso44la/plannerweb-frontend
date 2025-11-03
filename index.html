@@ -31,8 +31,14 @@
   </nav>
 
   <script>
+    const API_BASE =
+      window.location.hostname === "localhost"
+        ? "http://localhost:3000/api"
+        : "https://plannerweb-backend.onrender.com/api";
+
+
     // Hent innlogget bruker
-    fetch("https://plannerweb-backend.onrender.com/api/me", { credentials: "include" })
+    fetch(`${API_BASE}/me`, { credentials: "include" })
       .then(data => {
   if (data.error) {
     window.location.href = "login.html";
@@ -43,7 +49,7 @@
 
     // Logg ut 
     document.getElementById("logoutBtn").addEventListener("click", () => {
-      fetch("https://plannerweb-backend.onrender.com/api/logout", {
+      fetch(`${API_BASE}/me/logout`, {
         method: "POST",
         credentials: "include"
       }).then(() => {
