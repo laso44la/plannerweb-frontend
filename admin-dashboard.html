@@ -55,9 +55,15 @@
   <button id="logoutBtn">Logg ut</button>
 
   <script>
+
+    const API_BASE =
+    window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "https://plannerweb-backend.onrender.com";
+
     async function sjekkInnlogging() {
       try {
-        const res = await fetch('http://localhost:3000/api/me', {
+        const res = await fetch(`${API_BASE}/api/me`, {
           credentials: 'include'
         });
         if (!res.ok) return window.location.href = 'login.html';
@@ -77,7 +83,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/logout', {
+        const res = await fetch(`${API_BASE}/api/api/logout`, {
           method: 'POST',
           credentials: 'include'
         });
@@ -111,7 +117,7 @@
       statusEl.style.color = 'black';
 
       try {
-        const res = await fetch('http://localhost:3000/api/admin/brukere', {
+        const res = await fetch(`${API_BASE}/api/admin/brukere`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -134,7 +140,7 @@
     async function lastAdminData() {
       try {
         // Hent brukere
-        const resBrukere = await fetch('http://localhost:3000/api/admin/brukere', {
+        const resBrukere = await fetch(`${API_BASE}/api/api/admin/brukere`, {
           credentials: 'include'
         });
         if (!resBrukere.ok) throw new Error('Feil ved henting av brukere');
@@ -162,7 +168,7 @@
             if (!confirm('Er du sikker på at du vil slette denne brukeren?')) return;
             const id = btn.dataset.id;
             try {
-              const res = await fetch(`http://localhost:3000/api/admin/brukere/${id}`, {
+              const res = await fetch(`${API_BASE}/api/admin/brukere/${id}`, {
                 method: 'DELETE',
                 credentials: 'include'
               });
@@ -184,7 +190,7 @@
             if (!nyttPassord || nyttPassord.length < 6) return alert('Ugyldig passord');
             const id = btn.dataset.id;
             try {
-              const res = await fetch(`http://localhost:3000/api/admin/brukere/${id}/passord`, {
+              const res = await fetch(`${API_BASE}/api/admin/brukere/${id}/passord`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -202,7 +208,7 @@
         });
 
         // Hent statistikk
-        const resStat = await fetch('http://localhost:3000/api/admin/statistikk', {
+        const resStat = await fetch(`${API_BASE}/api/admin/statistikk`, {
           credentials: 'include'
         });
         if (!resStat.ok) throw new Error('Feil ved henting av statistikk');
