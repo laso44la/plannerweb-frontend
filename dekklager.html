@@ -165,12 +165,16 @@
 </form>
 
 <script>
-  const API_BASE = "https://plannerweb-backend.onrender.com";
+  const API_BASE =
+      window.location.hostname === "localhost"
+        ? "http://localhost:3000/api"
+        : "https://plannerweb-backend.onrender.com/api";
+
   let dekkliste = [];
 
   async function hentDekklager() {
     try {
-      const res = await fetch(`${API_BASE}/api/dekklager`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/dekklager`, { credentials: 'include' });
       if (!res.ok) throw new Error("Feil ved henting av dekklager");
       dekkliste = await res.json();
       visDekklager(dekkliste);
@@ -204,7 +208,7 @@
   async function slettDekk(id) {
     if (!confirm("Vil du slette dette dekket fra lageret?")) return;
     try {
-      const res = await fetch(`${API_BASE}/api/dekklager/${id}`, {
+      const res = await fetch(`${API_BASE}/dekklager/${id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -232,7 +236,7 @@ document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {
   };
 
   try {
-    const res = await fetch(`${API_BASE}/api/dekklager`, {
+    const res = await fetch(`${API_BASE}/dekklager`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
