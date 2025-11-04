@@ -363,8 +363,8 @@ function lagBilIkon(bil) {
       const rect = el.getBoundingClientRect();
       const parentRect = kartWrapper.getBoundingClientRect();
       // regn posisjon relativt til kartWrapper og ta hensyn til scale
-      const finalX = (rect.left - parentRect.left + ICON_W/2) / scale;
-      const finalY = (rect.top  - parentRect.top  + ICON_H/2) / scale;
+      const finalX = (rect.left - parentRect.left) / scale + ICON_W/2;
+      const finalY = (rect.top  - parentRect.top) / scale + ICON_H/2;
       bil.x = finalX; bil.y = finalY;
       el.dataset.x = String(finalX); el.dataset.y = String(finalY);
       await lagrePosisjon(bil);
