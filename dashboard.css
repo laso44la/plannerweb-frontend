@@ -39,7 +39,8 @@
     }
 
     tr:nth-child(even){
-        background-color: beige;
+        background-color: lightgray;
+        color: #000;
     }
 
     #adminSection{

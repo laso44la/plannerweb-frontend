@@ -278,6 +278,52 @@ document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {
     visDekklager(filtrert);
   }
 
+  // Når du klikker på "Utlevert"
+document.querySelectorAll(".utlevertBtn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const id = btn.dataset.id;
+    if (!confirm("Bekreft at dekket er utlevert?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/dekklager/${id}/utlevert`, {
+        method: "PUT",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Kunne ikke oppdatere dekkstatus");
+      alert("✅ Dekk markert som utlevert!");
+      hentDekklager();
+    } catch (err) {
+      console.error("Feil ved utlevering:", err);
+      alert("❌ Feil ved utlevering");
+    }
+  });
+});
+
+// Når du klikker på "Endre"
+document.querySelectorAll(".endreBtn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const id = btn.dataset.id;
+    const nyLokasjon = prompt("Ny lokasjon (Blå, Hvit, Sutre):");
+    if (!nyLokasjon) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/dekklager/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ lokasjon: nyLokasjon })
+      });
+      if (!res.ok) throw new Error("Kunne ikke oppdatere dekk");
+      alert("✅ Dekk oppdatert!");
+      hentDekklager();
+    } catch (err) {
+      console.error("Feil ved oppdatering:", err);
+      alert("❌ Feil ved oppdatering");
+    }
+  });
+});
+
+
   function eksporterDekkCSV() {
     if (!dekkliste || dekkliste.length === 0) {
       alert("Ingen dekk å eksportere.");
