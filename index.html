@@ -38,14 +38,20 @@
 
 
     // Hent innlogget bruker
-    fetch(`${API_BASE}/me`, { credentials: "include" })
-      .then(data => {
-  if (data.error) {
-    window.location.href = "login.html";
-  } else {
-    document.getElementById("brukerNavn").innerText = data.navn;
-  }
-});
+  fetch(`${API_BASE}/me`, { credentials: "include" })
+    .then(res => res.json()) // ✅ konverter responsen til JSON
+    .then(data => {
+      if (data.error) {
+        window.location.href = "login.html";
+      } else {
+        document.getElementById("brukerNavn").innerText = data.navn || data.brukernavn;
+      }
+    })
+    .catch(err => {
+      console.error("Feil ved henting av bruker:", err);
+      window.location.href = "login.html";
+    });
+
 
     // Logg ut 
     document.getElementById("logoutBtn").addEventListener("click", () => {
