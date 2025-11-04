@@ -89,11 +89,11 @@
 
 <div id="header"></div>
 
-<script>
+<!-- <script>
   fetch("header.html")
     .then(res => res.text())
     .then(html => { document.getElementById("header").innerHTML = html; });
-</script>
+</script> -->
 
 <h1>🛞 Dekklager</h1>
 
@@ -165,6 +165,12 @@
 </form>
 
 <script>
+
+  fetch("header.html")
+    .then(res => res.text())
+    .then(html => { document.getElementById("header").innerHTML = html; });
+
+
   const API_BASE =
       window.location.hostname === "localhost"
         ? "http://localhost:3000/api"
@@ -219,9 +225,14 @@
     }
   }
 
-  function visNyttSkjema(vis) {
+/*   function visNyttSkjema(vis) {
     document.getElementById("nyDekkForm").classList.toggle("hidden", !vis);
-  }
+  } */
+ function visNyttSkjema(vis) {
+  const skjema = document.getElementById("nyDekkForm");
+  skjema.style.display = vis ? "block" : "none";
+}
+
 
 // Håndter innsending av nytt dekk
 document.getElementById("nyDekkForm").addEventListener("submit", async (e) => {

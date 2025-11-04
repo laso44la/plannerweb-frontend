@@ -251,28 +251,30 @@ function initParkering(){
   }
 
   /* ---------- lag et ikon for en bil ---------- */
-  function lagBilIkon(bil){
-    if(bil.x == null || bil.y == null) return;
-    // unngå duplikat
-    if(kartWrapper.querySelector(`.bil-ikon[data-regnr="${bil.regnr}"]`)) return;
+function lagBilIkon(bil) {
+  if (bil.x == null || bil.y == null) return;
 
-    const ICON_W = 110;
-    const ICON_H = 36;
+  // unngå duplikat
+  if (kartWrapper.querySelector(`.bil-ikon[data-regnr="${bil.regnr}"]`)) return;
 
-    const el = document.createElement('div');
-    el.className = 'bil-ikon';
-    el.dataset.regnr = bil.regnr;
-    el.dataset.x = String(bil.x);
-    el.dataset.y = String(bil.y);
-    el.dataset.vinkel = String(bil.vinkel || 0);
-    el.style.width = ICON_W + 'px';
-    el.style.height = ICON_H + 'px';
-    el.textContent = bil.regnr;
+  const ICON_W = 110;
+  const ICON_H = 36;
 
-    // posisjonere slik at bredde/høyde midtstemmer
-    el.style.left = (bil.x - ICON_W/2) + 'px';
-    el.style.top  = (bil.y - ICON_H/2) + 'px';
-    el.style.transform = `rotate(${bil.vinkel || 0}deg)`;
+  const el = document.createElement('div');
+  el.className = 'bil-ikon';
+  el.dataset.regnr = bil.regnr;
+  el.dataset.x = String(bil.x);
+  el.dataset.y = String(bil.y);
+  el.dataset.vinkel = String(bil.vinkel || 0);
+  el.style.width = ICON_W + 'px';
+  el.style.height = ICON_H + 'px';
+
+  // Sentrer ikon og roter rundt midten
+  el.style.position = 'absolute';
+  el.style.left = `${bil.x}px`;
+  el.style.top = `${bil.y}px`;
+  el.style.transformOrigin = 'center center';
+  el.style.transform = `translate(-50%, -50%) rotate(${bil.vinkel || 0}deg)`;
 
     // kontroller (rot, fjern)
     const kont = document.createElement('div');
