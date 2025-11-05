@@ -274,8 +274,8 @@ function lagBilIkon(bil) {
   el.style.left = `${bil.x}px`;
   el.style.top = `${bil.y}px`;
   el.style.transformOrigin = 'center center';
-  el.style.transform = `rotate(${bil.vinkel || 0}deg)`;
- // el.style.transform = `translate(-50%, -50%) rotate(${bil.vinkel || 0}deg)`;
+ // el.style.transform = `rotate(${bil.vinkel || 0}deg)`;
+  el.style.transform = `translate(-50%, -50%) rotate(${bil.vinkel || 0}deg)`;
 
     // kontroller (rot, fjern)
     const kont = document.createElement('div');
