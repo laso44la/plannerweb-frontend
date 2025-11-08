@@ -83,6 +83,7 @@
       background: #2b2b2b;
       color: white;
     }
+
   </style>
 </head>
 <body>
@@ -349,5 +350,225 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
 
   hentDekklager();
 </script>
+<!-- 🪟 PENERE POPUP FOR REDIGERING -->
+<style>
+  #popupBakgrunn {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  #popupBakgrunn.vis {
+    display: flex;
+    opacity: 1;
+  }
+
+  #popupVindu {
+    background: #3a3a3a;
+    padding: 20px;
+    border-radius: 10px;
+    width: 420px;
+    max-width: 90%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    animation: popupIn 0.25s ease;
+  }
+
+  @keyframes popupIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  #popupVindu label {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.9em;
+  }
+
+  #popupVindu input {
+    width: 100%;
+    margin-top: 2px;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #2b2b2b;
+    color: white;
+  }
+
+  #popupVindu .knapper {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  #popupVindu button {
+    background: #1976d2;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #popupVindu button:hover {
+    background: #125ca1;
+  }
+
+  #avbrytBtn {
+    background: #555;
+  }
+</style>
+<!-- 🔧 POPUP for redigering -->
+<div id="popupBakgrunn">
+  <div id="popupVindu">
+    <h3>✏️ Endre dekk</h3>
+    <form id="endreForm">
+      <input type="hidden" id="endreId">
+
+      <label>Reg.nr:</label>
+      <input type="text" id="endreRegnr">
+
+      <label>Lokasjon:</label>
+      <input type="text" id="endreLokasjon">
+
+      <label>Type:</label>
+      <input type="text" id="endreType">
+
+      <label>Dimensjon:</label>
+      <input type="text" id="endreDimensjon">
+
+      <label>Antall:</label>
+      <input type="number" id="endreAntall" min="1">
+
+      <label>Dato innlevert:</label>
+      <input type="date" id="endreInnlevert">
+
+      <label>Dato utlevert:</label>
+      <input type="date" id="endreUtlevert">
+
+      <label>Kunde-ID:</label>
+      <input type="number" id="endreKundeId">
+
+      <label>Jobb-ID:</label>
+      <input type="number" id="endreJobbId">
+
+      <div class="knapper">
+        <button type="button" id="avbrytBtn">Avbryt</button>
+        <button type="submit">💾 Lagre endringer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // 🎯 Dobbeltklikk for å åpne popup
+  document.addEventListener("dblclick", (e) => {
+    const tr = e.target.closest("tr");
+    if (!tr || tr.parentNode.tagName !== "TBODY") return;
+    const id = tr.children[0].textContent;
+    const dekk = dekkliste.find(d => d.id == id);
+    if (!dekk) return;
+
+    document.getElementById("endreId").value = dekk.id;
+    document.getElementById("endreRegnr").value = dekk.regnr || "";
+    document.getElementById("endreLokasjon").value = dekk.lokasjon || "";
+    document.getElementById("endreType").value = dekk.type || "";
+    document.getElementById("endreDimensjon").value = dekk.dimensjon || "";
+    document.getElementById("endreAntall").value = dekk.antall || 1;
+    document.getElementById("endreInnlevert").value = dekk.dato_innlevert ? new Date(dekk.dato_innlevert).toISOString().split('T')[0] : "";
+    document.getElementById("endreUtlevert").value = dekk.dato_utlevert ? new Date(dekk.dato_utlevert).toISOString().split('T')[0] : "";
+    document.getElementById("endreKundeId").value = dekk.kunde_id || "";
+    document.getElementById("endreJobbId").value = dekk.jobb_id || "";
+
+    document.getElementById("popupBakgrunn").classList.add("vis");
+  });
+
+  // 🧩 Lukk popup
+  document.getElementById("avbrytBtn").addEventListener("click", () => {
+    document.getElementById("popupBakgrunn").classList.remove("vis");
+    setTimeout(()=> document.getElementById("popupBakgrunn").style.display = "none", 250);
+  });
+
+  // ESC-tast lukker også
+  window.addEventListener("keydown", e=>{
+    if(e.key === "Escape") document.getElementById("popupBakgrunn").classList.remove("vis");
+  });
+
+  // 💾 Lagre endringer
+  document.getElementById("endreForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("endreId").value;
+    const oppdatert = {
+      regnr: document.getElementById("endreRegnr").value.trim(),
+      lokasjon: document.getElementById("endreLokasjon").value.trim(),
+      type: document.getElementById("endreType").value.trim(),
+      dimensjon: document.getElementById("endreDimensjon").value.trim(),
+      antall: parseInt(document.getElementById("endreAntall").value),
+      dato_innlevert: document.getElementById("endreInnlevert").value || null,
+      dato_utlevert: document.getElementById("endreUtlevert").value || null,
+      kunde_id: document.getElementById("endreKundeId").value || null,
+      jobb_id: document.getElementById("endreJobbId").value || null
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/dekklager/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(oppdatert)
+      });
+      if (!res.ok) throw new Error("Feil ved oppdatering");
+      alert("✅ Dekk oppdatert!");
+      document.getElementById("popupBakgrunn").classList.remove("vis");
+      hentDekklager();
+    } catch (err) {
+      console.error(err);
+      alert("❌ Klarte ikke å oppdatere dekk.");
+    }
+  });
+
+  // 📤 Eksporter til Excel (.xlsx)
+  async function eksporterDekkExcel() {
+    if (!dekkliste || dekkliste.length === 0) {
+      alert("Ingen data å eksportere.");
+      return;
+    }
+
+    // Dynamisk importer XLSX
+    const { utils, writeFile } = await import("https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs");
+
+    const ws = utils.json_to_sheet(dekkliste.map(d => ({
+      ID: d.id,
+      Regnr: d.regnr,
+      Lokasjon: d.lokasjon,
+      Type: d.type,
+      Dimensjon: d.dimensjon,
+      Antall: d.antall,
+      Innlevert: d.dato_innlevert,
+      Utlevert: d.dato_utlevert,
+      KundeID: d.kunde_id,
+      JobbID: d.jobb_id
+    })));
+
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Dekklager");
+    writeFile(wb, "dekklager.xlsx");
+  }
+
+  // Legg til knapp for Excel-eksport
+  const excelBtn = document.createElement("button");
+  excelBtn.textContent = "📊 Eksporter til Excel";
+  excelBtn.onclick = eksporterDekkExcel;
+  document.querySelector(".menu").appendChild(excelBtn);
+</script>
+
+
+
 </body>
 </html>
