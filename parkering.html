@@ -52,6 +52,36 @@
     #statusLine{position:fixed;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;font-size:13px;z-index:2000}
     /* small helpers */
     .hidden{display:none}
+
+    /* FILTER KNAPPER */
+    .filter-knapper {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .filter-knapper button {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+
+      .filter-knapper button:hover {
+        background: #e2e2e2;
+      }
+
+      .filter-knapper button.aktiv {
+        background: #0078d4;
+        color: white;
+        border-color: #0078d4;
+        box-shadow: 0 0 6px rgba(0, 120, 212, 0.4);
+      }
+
+
   </style>
 </head>
 <body>
@@ -61,10 +91,10 @@
     <aside id="sidebar">
       <h2>🚗 Biler</h2>
       <input id="search" placeholder="Søk etter reg.nr eller trykk Enter for zoom" />
-     <div id="filterRad" style="display:flex; gap:10px; margin-bottom:8px; align-items:center;">
-        <label><input type="radio" name="filter" id="filterAlle" checked> Alle</label>
-        <label><input type="radio" name="filter" id="filterParkerte"> Parkerte</label>
-        <label><input type="radio" name="filter" id="filterUparkerte"> Uparkerte</label>
+     <div id="filterRad" class="filter-knapper">
+        <button data-filter="alle" class="aktiv">🚗 Alle</button>
+        <button data-filter="parkert">🅿️ Parkerte</button>
+        <button data-filter="uparkerte">🚫 Uparkerte</button>
       </div>
       <div id="bilListe" aria-live="polite"></div>
 
@@ -148,6 +178,7 @@ function initParkering(){
   const map = document.getElementById('map');
   const bilListe = document.getElementById('bilListe');
   const search = document.getElementById('search');
+  // Filter
   const filterAlle = document.getElementById("filterAlle");
   const filterParkerte = document.getElementById("filterParkerte");
   const filterUparkerte = document.getElementById("filterUparkerte");
@@ -210,30 +241,36 @@ function initParkering(){
       visStatus('Feil ved henting av biler');
     }
   }
+  /* Filter knapper */
+  let aktivtFilter = 'alle';
+
+    document.querySelectorAll('#filterRad button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Fjern aktiv-klasse fra alle
+        document.querySelectorAll('#filterRad button').forEach(b => b.classList.remove('aktiv'));
+        // Marker valgt
+        btn.classList.add('aktiv');
+        aktivtFilter = btn.dataset.filter;
+        visBilListe();
+      });
+    });
 
   /* ---------- vis bil-liste (med paging, søk, vis kun parkert) ---------- */
   function visBilListe() {
-    bilListe.innerHTML = '';
-    const q = (search.value || '').trim().toLowerCase();
+      bilListe.innerHTML = '';
+      const q = (search.value || '').trim().toLowerCase();
 
-    // Sjekk hvilket filter som er valgt
-    const filter = filterParkerte.checked
-      ? 'parkert'
-      : filterUparkerte.checked
-        ? 'uparkerte'
-        : 'alle';
+        const filtrert = biler.filter(b => {
+            const matchS = b.regnr.toLowerCase().includes(q);
+            let matchP = true;
 
-    const filtrert = biler.filter(b => {
-      const matchS = b.regnr.toLowerCase().includes(q);
+        if (aktivtFilter === 'parkert') {
+          matchP = (b.x != null && b.y != null);
+        } else if (aktivtFilter === 'uparkerte') {
+          matchP = (b.x == null && b.y == null);
+        }
 
-      let matchP = true;
-      if (filter === 'parkert') {
-        matchP = (b.x != null && b.y != null);
-      } else if (filter === 'uparkerte') {
-        matchP = (b.x == null && b.y == null);
-      }
-
-      return matchS && matchP;
+        return matchS && matchP;
     });
 
     filtrert.slice(0, antallVis).forEach(b => {
@@ -249,7 +286,7 @@ function initParkering(){
 
       const status = document.createElement('span');
       status.className = 'plassert';
-      status.textContent = (b.x != null && b.y != null) ? 'P' : '';
+      status.textContent = (b.x != null && b.y != null) ? '🅿️' : '🚫';
       div.appendChild(status);
 
       // dragstart -> merk valgtBil
