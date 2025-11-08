@@ -84,6 +84,20 @@
       color: white;
     }
 
+    button.endreBtn, button.utlevertBtn {
+      background: #444;
+      border: 1px solid #666;
+      margin-right: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.2s;
+    }
+
+    button.endreBtn:hover { background: #2980b9; }
+    button.utlevertBtn:hover { background: #27ae60; }
+
+
   </style>
 </head>
 <body>
@@ -206,9 +220,21 @@
         <td>${r.dato_utlevert ? new Date(r.dato_utlevert).toLocaleDateString() : '-'}</td>
         <td>${r.kunde_id || '-'}</td>
         <td>${r.jobb_id || '-'}</td>
-        <td><button onclick="slettDekk(${r.id})">🗑️</button></td>
+        <td>
+          <button class="endreBtn" data-id="${r.id}" title="Endre">⚙️</button>
+          <button class="utlevertBtn" data-id="${r.id}" title="Marker som utlevert">📦</button>
+          <button onclick="slettDekk(${r.id})">🗑️</button></td>
       `;
       tbody.appendChild(tr);
+    });
+
+      // 🎯 Legg til eventlisteners for alle ⚙️-knapper
+    document.querySelectorAll(".endreBtn").forEach(btn => {
+    btn.addEventListener("click", () => åpnePopup(btn.dataset.id));
+    });
+
+      document.querySelectorAll(".utlevertBtn").forEach(btn => {
+    btn.addEventListener("click", () => markerSomUtlevert(btn.dataset.id));
     });
   }
 
@@ -225,6 +251,26 @@
       console.error("Sletting feilet:", err);
     }
   }
+
+  //Dekk utlevert knapp
+  async function markerSomUtlevert(id) {
+  if (!confirm("Bekreft at dekket er utlevert?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/dekklager/${id}/utlevert`, {
+      method: "PUT",
+      credentials: "include"
+    });
+
+    if (!res.ok) throw new Error("Kunne ikke oppdatere dekkstatus");
+    alert("📦 Dekk markert som utlevert!");
+    hentDekklager(); // oppdater tabellen
+  } catch (err) {
+    console.error("Feil ved utlevering:", err);
+    alert("❌ Feil ved oppdatering av utlevert-status");
+  }
+}
+
 
 /*   function visNyttSkjema(vis) {
     document.getElementById("nyDekkForm").classList.toggle("hidden", !vis);
@@ -498,6 +544,26 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
    // Fiks for "popup åpner ikke igjen" → fjern display:none riktig
   const popup = document.getElementById("popupBakgrunn");
   const form = document.getElementById("endreForm");
+
+  // Popup knapp
+  function åpnePopup(id) {
+  const dekk = dekkliste.find(d => d.id == id);
+  if (!dekk) return;
+
+  document.getElementById("endreId").value = dekk.id;
+  document.getElementById("endreRegnr").value = dekk.regnr || "";
+  document.getElementById("endreLokasjon").value = dekk.lokasjon || "";
+  document.getElementById("endreType").value = dekk.type || "";
+  document.getElementById("endreDimensjon").value = dekk.dimensjon || "";
+  document.getElementById("endreAntall").value = dekk.antall || 1;
+  document.getElementById("endreInnlevert").value = dekk.dato_innlevert ? new Date(dekk.dato_innlevert).toISOString().split('T')[0] : "";
+  document.getElementById("endreUtlevert").value = dekk.dato_utlevert ? new Date(dekk.dato_utlevert).toISOString().split('T')[0] : "";
+  document.getElementById("endreKundeId").value = dekk.kunde_id || "";
+  document.getElementById("endreJobbId").value = dekk.jobb_id || "";
+
+  popup.style.display = "flex";
+  setTimeout(() => popup.classList.add("vis"), 10);
+  }
 
   // Åpne popup ved dobbeltklikk
   document.addEventListener("dblclick", (e) => {
