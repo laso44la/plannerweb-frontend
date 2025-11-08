@@ -5,6 +5,20 @@
   <title>Dashboard - Bruker</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="style.css">
+
+  <style>
+  #mekanikersitat {
+    font-family: sans-serif;
+    font-size: 18px;
+    padding: 20px;
+    margin: 20px auto;
+    width: 80%;
+    background: #f4f4f4;
+    border-left: 5px solid #ff6600;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  }
+</style>
+
 </head>
 <body>
     <div id="header"></div>
@@ -21,7 +35,7 @@
 
   <h3>Dette er ett åpen system, bruk med ansvar.</h3>
   <p>Dato og Tid: <span id="datetime"></span></p>
-
+  <div id="mekanikersitat">Her kommer et mekanikersitat...</div>
   <nav>
     <ul>
       <li><a href="jobbregistrering.html">Registrer jobb</a></li>
@@ -78,5 +92,58 @@
         setInterval(updateDateTime, 1000);
     
   </script>
+
+  <script>
+  // JSON med sitater
+  const sitater = {
+    "klassiske": [
+      "Alt går an – med nok banning og bremserens.",
+      "Hvis det ikke passer, så passer vi det til.",
+      "Ingenting er umulig – bare dyrt, tungt og irriterende.",
+      "Vi fikser alt… til og med humøret, med nok kaffe.",
+      "Bilmekanikere: fordi trollmenn ikke tar på seg skitne jobber."
+    ],
+    "tørt_sarkastisk": [
+      "Ferdig? Jada, bilen og jeg har inngått våpenhvile.",
+      "Alt er skrudd fast. Tror jeg.",
+      "Det går fint – hvis du ikke ser for nøye etter.",
+      "Jeg er ikke sint, jeg er bare mekaniker.",
+      "Feilkode? Nei, nei – det er bare bilen som prøver å kommunisere."
+    ],
+    "kaffepause": [
+      "Kaffe først, så virkeligheten.",
+      "Jeg har ikke tid til å stresse – jeg har kaffe å drikke.",
+      "Etter tredje kopp kaffe begynner ting å virke. Som oftest.",
+      "Bilen blir ikke ferdig fortere av at du ser på meg."
+    ],
+    "favoritter": [
+      "Hvis jeg ikke finner feilen, finner jeg i hvert fall noe å skylde på.",
+      "Vi garanterer ikke resultatet – bare innsatsen.",
+      "Alt funker helt fint... helt til kunden henter bilen.",
+      "Bilmekaniker: Terapeut for kjøretøy med traumer.",
+      "Hvis bilen ikke virker, prøv å true den. Funker for oss.",
+      "Momentnøkkel? Nei, jeg går på følelse og frustrasjon."
+    ],
+    "visdom": [
+      "Jo mer rust, jo mer kjærlighet.",
+      "Skru først, tenk etterpå.",
+      "Et verksted uten banning er et museum.",
+      "Erfaring = antall ganger du har skrudd feil, men overlevd.",
+      "Bak hver mekaniker står en haug med gamle deler som “kan være greie å ha”."
+    ]
+  };
+
+  // Funksjon for å hente et tilfeldig sitat
+  function tilfeldigSitater(obj) {
+    const kategorier = Object.keys(obj);
+    const tilfeldigKategori = kategorier[Math.floor(Math.random() * kategorier.length)];
+    const sitatListe = obj[tilfeldigKategori];
+    const tilfeldigSitat = sitatListe[Math.floor(Math.random() * sitatListe.length)];
+    return tilfeldigSitat;
+  }
+
+  // Sett sitatet inn i div-en når siden lastes
+  document.getElementById("mekanikersitat").innerText = tilfeldigSitater(sitater);
+</script>
 </body>
 </html>
