@@ -363,51 +363,66 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
     opacity: 0;
     transition: opacity 0.25s ease;
   }
-
   #popupBakgrunn.vis {
     display: flex;
     opacity: 1;
   }
-
   #popupVindu {
-    background: #3a3a3a;
-    padding: 20px;
-    border-radius: 10px;
-    width: 420px;
-    max-width: 90%;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    background: #2f2f2f;
+    color: #f5f5f5;
+    padding: 22px;
+    border-radius: 12px;
+    width: 440px;
+    max-width: 95%;
+    box-shadow: 0 0 25px rgba(0,0,0,0.6);
     animation: popupIn 0.25s ease;
   }
-
   @keyframes popupIn {
     from { transform: scale(0.9); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
   }
-
+  #popupVindu h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: center;
+    font-weight: 600;
+    color: #fff;
+  }
   #popupVindu label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin-top: 8px;
     font-size: 0.9em;
+    color: #ddd;
   }
-
-  #popupVindu input {
+  #popupVindu input, #popupVindu select {
     width: 100%;
     margin-top: 2px;
     padding: 6px;
     border-radius: 6px;
     border: 1px solid #555;
-    background: #2b2b2b;
+    background: #1f1f1f;
     color: white;
   }
-
-  #popupVindu .knapper {
+  fieldset {
+    border: 1px solid #555;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding: 10px;
+  }
+  legend {
+    font-size: 0.85em;
+    padding: 0 6px;
+    color: #ccc;
+  }
+  .knapper {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 15px;
+    margin-top: 18px;
   }
-
-  #popupVindu button {
+  .knapper button {
     background: #1976d2;
     color: white;
     border: none;
@@ -415,52 +430,64 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
     border-radius: 6px;
     cursor: pointer;
   }
-
-  #popupVindu button:hover {
+  .knapper button:hover {
     background: #125ca1;
   }
-
   #avbrytBtn {
     background: #555;
+  }
+  #avbrytBtn:hover {
+    background: #666;
   }
 </style>
 <!-- 🔧 POPUP for redigering -->
 <div id="popupBakgrunn">
   <div id="popupVindu">
-    <h3>✏️ Endre dekk</h3>
+    <h3>🧾 Endre dekk</h3>
     <form id="endreForm">
       <input type="hidden" id="endreId">
 
-      <label>Reg.nr:</label>
+      <label>🚗 Reg.nr:</label>
       <input type="text" id="endreRegnr">
 
-      <label>Lokasjon:</label>
+      <label>📍 Lokasjon:</label>
       <input type="text" id="endreLokasjon">
 
-      <label>Type:</label>
-      <input type="text" id="endreType">
+      <label>🛞 Type:</label>
+      <select id="endreType">
+        <option value="">Velg type...</option>
+        <option value="Sommer">Sommer</option>
+        <option value="Vinter">Vinter</option>
+        <option value="Piggfri">Piggfri</option>
+      </select>
 
-      <label>Dimensjon:</label>
+      <label>📏 Dimensjon:</label>
       <input type="text" id="endreDimensjon">
 
-      <label>Antall:</label>
+      <label>🔢 Antall:</label>
       <input type="number" id="endreAntall" min="1">
 
-      <label>Dato innlevert:</label>
-      <input type="date" id="endreInnlevert">
+      <fieldset>
+        <legend>📅 Datoer</legend>
+        <label>Innlevert:</label>
+        <input type="date" id="endreInnlevert">
 
-      <label>Dato utlevert:</label>
-      <input type="date" id="endreUtlevert">
+        <label>Utlevert:</label>
+        <input type="date" id="endreUtlevert">
+      </fieldset>
 
-      <label>Kunde-ID:</label>
-      <input type="number" id="endreKundeId">
+      <fieldset>
+        <legend>👤 Kundeinformasjon</legend>
+        <label>Kunde-ID:</label>
+        <input type="number" id="endreKundeId">
 
-      <label>Jobb-ID:</label>
-      <input type="number" id="endreJobbId">
+        <label>Jobb-ID:</label>
+        <input type="number" id="endreJobbId">
+      </fieldset>
 
       <div class="knapper">
         <button type="button" id="avbrytBtn">Avbryt</button>
-        <button type="submit">💾 Lagre endringer</button>
+        <button type="submit">💾 Lagre</button>
       </div>
     </form>
   </div>
@@ -468,6 +495,11 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
 
 <script>
   // 🎯 Dobbeltklikk for å åpne popup
+   // Fiks for "popup åpner ikke igjen" → fjern display:none riktig
+  const popup = document.getElementById("popupBakgrunn");
+  const form = document.getElementById("endreForm");
+
+  // Åpne popup ved dobbeltklikk
   document.addEventListener("dblclick", (e) => {
     const tr = e.target.closest("tr");
     if (!tr || tr.parentNode.tagName !== "TBODY") return;
@@ -486,22 +518,23 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
     document.getElementById("endreKundeId").value = dekk.kunde_id || "";
     document.getElementById("endreJobbId").value = dekk.jobb_id || "";
 
-    document.getElementById("popupBakgrunn").classList.add("vis");
+    popup.style.display = "flex";
+    setTimeout(() => popup.classList.add("vis"), 10);
   });
 
-  // 🧩 Lukk popup
-  document.getElementById("avbrytBtn").addEventListener("click", () => {
-    document.getElementById("popupBakgrunn").classList.remove("vis");
-    setTimeout(()=> document.getElementById("popupBakgrunn").style.display = "none", 250);
-  });
+  // Lukk popup (med fade)
+  function lukkPopup() {
+    popup.classList.remove("vis");
+    setTimeout(() => {
+      popup.style.display = "none";
+    }, 250);
+  }
 
-  // ESC-tast lukker også
-  window.addEventListener("keydown", e=>{
-    if(e.key === "Escape") document.getElementById("popupBakgrunn").classList.remove("vis");
-  });
+  document.getElementById("avbrytBtn").addEventListener("click", lukkPopup);
+  window.addEventListener("keydown", e => { if (e.key === "Escape") lukkPopup(); });
 
-  // 💾 Lagre endringer
-  document.getElementById("endreForm").addEventListener("submit", async (e) => {
+  // Lagre endringer
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = document.getElementById("endreId").value;
     const oppdatert = {
@@ -525,7 +558,7 @@ document.querySelectorAll(".endreBtn").forEach(btn => {
       });
       if (!res.ok) throw new Error("Feil ved oppdatering");
       alert("✅ Dekk oppdatert!");
-      document.getElementById("popupBakgrunn").classList.remove("vis");
+      lukkPopup();
       hentDekklager();
     } catch (err) {
       console.error(err);
