@@ -179,6 +179,10 @@ function initParkering(){
   const bilListe = document.getElementById('bilListe');
   const search = document.getElementById('search');
   // Filter
+  // --- FILTER / EVENTS (legg dette i initParkering) ---
+  // Finn både gamle og nye filter-elementer (kompatibilitet)
+  const visKunParkerteEl = document.getElementById("visKunParkerte"); // kan være null
+  const filterRad = document.getElementById("filterRad");             // knapp-rad (ny)
   const filterAlle = document.getElementById("filterAlle");
   const filterParkerte = document.getElementById("filterParkerte");
   const filterUparkerte = document.getElementById("filterUparkerte");
@@ -194,6 +198,54 @@ function initParkering(){
     antallVis = 15; // reset paging
     visBilListe();
   });
+
+   // Hvis den gamle checkboxen finnes — for backwards compatibility
+  if (visKunParkerteEl) {
+    visKunParkerteEl.addEventListener("change", () => {
+      antallVis = 15;
+      visBilListe();
+    });
+  }
+
+  // Hvis vi bruker knapp/rad-oppsettet (#filterRad) — sett eventlisteners på knappene
+  if (filterRad) {
+    // Hvis du bruker <button data-filter="parkert"> osv.
+    const btns = filterRad.querySelectorAll("button, input[type=radio], input[type=checkbox]");
+    if (btns.length) {
+      btns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          // dersom radio/checkbox: bruker checked; dersom knapp: les data-filter
+          if (btn.dataset && btn.dataset.filter) {
+            aktivtFilter = btn.dataset.filter;
+            // oppdater visuell aktiv-klasse
+            filterRad.querySelectorAll("button").forEach(b => b.classList.remove("aktiv"));
+            if (btn.tagName.toLowerCase() === "button") btn.classList.add("aktiv");
+          } else {
+            // radio/checkbox fall-back
+            if (filterParkerte && filterParkerte.checked) aktivtFilter = "parkert";
+            else if (filterUparkerte && filterUparkerte.checked) aktivtFilter = "uparkerte";
+            else aktivtFilter = "alle";
+          }
+          antallVis = 15;
+          visBilListe();
+        });
+      });
+    } else {
+      // hvis filterRad finnes, men innhold er radio inputs
+      if (filterAlle) filterAlle.addEventListener("change", () => { aktivtFilter = 'alle'; antallVis = 15; visBilListe(); });
+      if (filterParkerte) filterParkerte.addEventListener("change", () => { aktivtFilter = 'parkert'; antallVis = 15; visBilListe(); });
+      if (filterUparkerte) filterUparkerte.addEventListener("change", () => { aktivtFilter = 'uparkerte'; antallVis = 15; visBilListe(); });
+    }
+  } else {
+    // om #filterRad ikke finnes, men individuelle radios finnes
+    if (filterAlle) filterAlle.addEventListener("change", () => { aktivtFilter = 'alle'; antallVis = 15; visBilListe(); });
+    if (filterParkerte) filterParkerte.addEventListener("change", () => { aktivtFilter = 'parkert'; antallVis = 15; visBilListe(); });
+    if (filterUparkerte) filterUparkerte.addEventListener("change", () => { aktivtFilter = 'uparkerte'; antallVis = 15; visBilListe(); });
+  }
+
+  // initialt aktivt filter
+  let aktivtFilter = 'alle';
+
 
   // state
   let biler = [];        // alle biler fra /api/biler
@@ -241,19 +293,19 @@ function initParkering(){
       visStatus('Feil ved henting av biler');
     }
   }
-  /* Filter knapper */
-  let aktivtFilter = 'alle';
+  // /* Filter knapper */
+  // let aktivtFilter = 'alle';
 
-    document.querySelectorAll('#filterRad button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Fjern aktiv-klasse fra alle
-        document.querySelectorAll('#filterRad button').forEach(b => b.classList.remove('aktiv'));
-        // Marker valgt
-        btn.classList.add('aktiv');
-        aktivtFilter = btn.dataset.filter;
-        visBilListe();
-      });
-    });
+  //   document.querySelectorAll('#filterRad button').forEach(btn => {
+  //     btn.addEventListener('click', () => {
+  //       // Fjern aktiv-klasse fra alle
+  //       document.querySelectorAll('#filterRad button').forEach(b => b.classList.remove('aktiv'));
+  //       // Marker valgt
+  //       btn.classList.add('aktiv');
+  //       aktivtFilter = btn.dataset.filter;
+  //       visBilListe();
+  //     });
+  //   });
 
   /* ---------- vis bil-liste (med paging, søk, vis kun parkert) ---------- */
   function visBilListe() {
