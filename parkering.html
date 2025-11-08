@@ -61,9 +61,11 @@
     <aside id="sidebar">
       <h2>🚗 Biler</h2>
       <input id="search" placeholder="Søk etter reg.nr eller trykk Enter for zoom" />
-      <label style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="visKunParkerte"/> Vis kun parkerte biler
-      </label>
+     <div id="filterRad" style="display:flex; gap:10px; margin-bottom:8px; align-items:center;">
+        <label><input type="radio" name="filter" id="filterAlle" checked> Alle</label>
+        <label><input type="radio" name="filter" id="filterParkerte"> Parkerte</label>
+        <label><input type="radio" name="filter" id="filterUparkerte"> Uparkerte</label>
+      </div>
       <div id="bilListe" aria-live="polite"></div>
 
       <div id="leggTilBil">
@@ -146,7 +148,10 @@ function initParkering(){
   const map = document.getElementById('map');
   const bilListe = document.getElementById('bilListe');
   const search = document.getElementById('search');
-  const visKunParkerte = document.getElementById('visKunParkerte');
+  const filterAlle = document.getElementById("filterAlle");
+  const filterParkerte = document.getElementById("filterParkerte");
+  const filterUparkerte = document.getElementById("filterUparkerte");
+
   const leggTilBtn = document.getElementById('leggTilBilBtn');
   const statusDiv = document.getElementById('bilStatus');
 
@@ -207,22 +212,31 @@ function initParkering(){
   }
 
   /* ---------- vis bil-liste (med paging, søk, vis kun parkert) ---------- */
-  function visBilListe(){
-    bilListe.classList.add("fader");
-    setTimeout(() => {
+  function visBilListe() {
     bilListe.innerHTML = '';
     const q = (search.value || '').trim().toLowerCase();
-    const kun = visKunParkerte.checked;
 
-    // filtrer basert på søk og parkering
-    const filtrert = biler.filter(b=>{
+    // Sjekk hvilket filter som er valgt
+    const filter = filterParkerte.checked
+      ? 'parkert'
+      : filterUparkerte.checked
+        ? 'uparkerte'
+        : 'alle';
+
+    const filtrert = biler.filter(b => {
       const matchS = b.regnr.toLowerCase().includes(q);
-      const matchP = !kun || (b.x != null && b.y != null);
+
+      let matchP = true;
+      if (filter === 'parkert') {
+        matchP = (b.x != null && b.y != null);
+      } else if (filter === 'uparkerte') {
+        matchP = (b.x == null && b.y == null);
+      }
+
       return matchS && matchP;
     });
 
-    // vis kun antallVis først
-    filtrert.slice(0, antallVis).forEach(b=>{
+    filtrert.slice(0, antallVis).forEach(b => {
       const div = document.createElement('div');
       div.className = 'bil';
       div.draggable = true;
@@ -239,32 +253,29 @@ function initParkering(){
       div.appendChild(status);
 
       // dragstart -> merk valgtBil
-      div.addEventListener('dragstart', (e)=>{
+      div.addEventListener('dragstart', (e) => {
         valgtBil = b;
-        try{ e.dataTransfer.setData('text/plain', b.regnr); }catch(e){}
+        try { e.dataTransfer.setData('text/plain', b.regnr); } catch (e) {}
       });
 
       // klikk -> zoom til (hvis plassert)
-      div.addEventListener('click', ()=>{
+      div.addEventListener('click', () => {
         const ikon = document.querySelector(`.bil-ikon[data-regnr="${b.regnr}"]`);
-        if(ikon) zoomTilBil(ikon);
+        if (ikon) zoomTilBil(ikon);
       });
 
       bilListe.appendChild(div);
     });
 
-    if(filtrert.length > antallVis){
-      const btn = document.createElement('button');
-      btn.className = 'vis-mer';
-      btn.textContent = `Vis flere (${filtrert.length - antallVis} flere)`;
-      btn.addEventListener('click', ()=>{ antallVis += 15; visBilListe(); });
-      bilListe.appendChild(btn);
-    }
-    
-     bilListe.classList.remove("fader");
-  }, 100);
- 
+  if (filtrert.length > antallVis) {
+    const btn = document.createElement('button');
+    btn.className = 'vis-mer';
+    btn.textContent = `Vis flere (${filtrert.length - antallVis} flere)`;
+    btn.addEventListener('click', () => { antallVis += 15; visBilListe(); });
+    bilListe.appendChild(btn);
   }
+}
+
 
   /* ---------- render / clear icons ---------- */
   function renderAlleIkoner(){
