@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.rolle === "admin") {
       window.location.href = "admin-dashboard.html";
     } else {
-      window.location.href = "dashboard.html";
+      window.location.href = "index.html";
     }
 
   } catch (err) {
